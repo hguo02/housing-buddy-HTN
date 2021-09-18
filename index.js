@@ -1,9 +1,9 @@
 // Import the functions you need from the SDKs you need
 import 'babel-polyfill';
-import { USERS, REVIEWS, LOCATIONS, GIVEAWAYS } from './constants.js'
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-import { getFirestore, collection, doc, getDoc, getDocs, query } from "firebase/firestore";
+import { USERS, REVIEWS, LOCATIONS, GIVEAWAYS } from './js/constants.js'
+import firebase from "firebase/compat/app";
+import "firebase/compat/firestore";
+// import { getFirestore, collection, doc, getDoc, getDocs, query } from "firebase/firestore";
 
 
 // import firebase from "firebase/app";
@@ -25,12 +25,12 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-// const app = firebase.initializeApp(firebaseConfig);
-// const firestore = app.firestore();
+const app = firebase.initializeApp(firebaseConfig);
+const firestore = app.firestore();
 
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const firestore = getFirestore(app);
+// const app = initializeApp(firebaseConfig);
+// const analytics = getAnalytics(app);
+// const firestore = getFirestore(app);
 
 async function getLocationReviews(locationID) {
     console.log('executing');

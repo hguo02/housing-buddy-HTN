@@ -5,13 +5,162 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Housing Buddy | Map</title>
+
+
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Lato:wght@100;300;400;700&family=Roboto:wght@100;300;400;500;700&display=swap"
+        rel="stylesheet">
+
+    <script src="https://kit.fontawesome.com/0bb453d0b7.js" crossorigin="anonymous"></script>
+
 </head>
 
 <body>
+    <nav class="navbar">
+        <div class="app-logo">
+            <img src="img/logo.png" alt="log">
+        </div>
+        <div class="links">
+            <a class="nav-link" href="/">Home</a>
+            <a class="nav-link" href="rewards.html">Rewards</a>
+            <a class="nav-link" href="profile.html">Profile</a>
+            <a class="nav-link" href="splash.html">About</a>
+            <a class="auth-btn" href="auth.html">Sign In</a>
+        </div>
+    </nav>
 
+    <div class="main-display">
+        <div id="map"></div>
+
+        <div id="info-bar">
+            <button href="#" onclick="resetbar()" class="close-button" aria-label="Close alert" type="button">x</button>
+            <h1 class="sidebar-title" id="address">ayo sample address</h1>
+            <div class="carousel">
+                <img class="mySlides" src="img/domus1.jpeg">
+                <img class="mySlides" src="img/domus2.jpeg">
+                <img class="mySlides" src="img/domus3.jpeg">
+                <img class="mySlides" src="img/domus4.jpeg">
+                <img class="mySlides" src="img/domus4.jpeg">
+                <img class="mySlides" src="img/domus4.jpeg">
+                <img class="mySlides" src="img/domus4.jpeg">
+                <img class="mySlides" src="img/domus4.jpeg">
+                <img class="mySlides" src="img/domus4.jpeg">
+                <img class="mySlides" src="img/domus4.jpeg">
+
+                <button class="carousel-btn-left" onclick="plusDivs(-1)">&#10094;</button>
+                <button class="carousel-btn-right" onclick="plusDivs(+1)">&#10095;</button>
+            </div>
+            <div class="starter-info-bar">
+                <div class="starter-box">
+                    <div class="stars">
+                        <span id="numrating"></span>
+                        <i class="fas fa-star fa-star-half-alt" id="star1"></i>
+                        <i class="fas fa-star-half-alt fa-star" id="star2"></i>
+                        <i class="fas fa-star" id="star3"></i>
+                        <i class="far fa-star" id="star4"></i>
+                        <i class="far fa-star" id="star5"></i>
+                    </div>
+                    <p class="starter-box-title">Rating</p>
+                </div>
+                <div class="starter-box">
+                    <div class="price">
+                        <span id="numprice"></span>
+                        <i class="fas fa-dollar-sign" id="dollar1"></i>
+                        <i class="fas fa-dollar-sign" id="dollar2"></i>
+                        <i class="fas fa-dollar-sign" id="dollar3"></i>
+                    </div>
+                    <p class="starter-box-title">Price</p>
+                </div>
+
+
+                <div class="starter-box">
+                    <div class="recommend">
+                        <span id="num-recommendations">60+</span>
+                        <img src="img/thumbup.png" alt="thumb up pic" class="thumbup">
+                    </div>
+                    <p class="starter-box-title">Recommendations</p>
+                </div>
+            </div>
+
+            <div class="description">
+                <p class="description-title">Description</p>
+                <div class="description-box">
+                    <p class="description-info" id="description-info">Lorem ipsum dolor sit amet, consectetur adipiscing
+                        elit, sed do eiusmod tempor incididunt ut labore et dolore magna
+                        aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea
+                        commodo consequat. Duis
+                    </p>
+                </div>
+            </div>
+
+            <p class="description-title">Reviews</p>
+            <div class="add-btn">
+                <p class="add-review">Add Review</p>
+            </div>
+            <div class="comment-section">
+                <div class="comment">
+                    <span class="commentor">Hitanshu</span> | <span class="comment-date">August 15 2021</span>
+                    <h3 class="comment-title">The first comment</h3>
+                    <p class="comment-body">This place is amazing</p>
+                </div>
+            </div>
+
+
+        </div>
+
+
+    </div>
+
+
+
+
+
+    <!-- <script>
+        var slideIndex = 1;
+        showDivs(slideIndex);
+
+        function plusDivs(n) {
+            showDivs(slideIndex += n);
+        }
+
+        function showDivs(n) {
+            var i;
+            var x = document.getElementsByClassName("mySlides");
+            if (n > x.length) { slideIndex = 1 }
+            if (n < 1) { slideIndex = x.length };
+            for (i = 0; i < x.length; i++) {
+                x[i].style.display = "none";
+            }
+            x[slideIndex - 1].style.display = "block";
+        }
+    </script> -->
+
+    <!-- <script>
+        function resetbar() {
+            document.getElementById("info-bar").style.display = "none"
+            document.getElementById("map").style.width = "100%"
+            document.getElementById("info-bar").style.width = "0%"
+        }
+    </script> -->
+
+    <!-- <script type="babel/text" src="js/firebase.js"></script> -->
+    <!-- <script type="text/babel" src="js/firebase-functions.js"></script> -->
+
+    <!-- <script type="text/javascript" src="./dist/bundle.js"></script> -->
+    <!-- <script type="text/javascript" src="js/index.js"></script> -->
+    <!-- <script type="text/javascript" src="js/firebase-functions.js"></script> -->
     <script src="bundle.js"></script>
-    <!-- <script type="module" src="./index.js"></script> -->
+    <script src="js/main.js"></script>
+    <script
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAaGYuCB4vdsIH0FJc8d5inAJzw_88XtCI&callback=initMap&libraries=&v=weekly"
+        async>
+        </script>
 </body>
 
 </html>

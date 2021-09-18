@@ -1,0 +1,214 @@
+
+#map {
+  height: 92vh;
+  width: 100%;
+  transition: width 0.3s ease-in;
+}
+.navbar {
+  z-index: 2;
+}
+#info-bar{
+  font-family: 'Lato';
+  height: 90dvh;
+  width: 0;
+  /* background-color: */
+  transition: width .3s ease-in;
+  box-shadow: -2px 0px 10px rgb(180, 179, 179);
+  z-index: 1;
+  overflow-wrap: normal;
+  display:none;
+  flex-direction: column;
+  padding: 10px;
+  overflow-y: scroll;
+
+}
+
+
+.main-display{
+  display:flex;
+  justify-content: space-between;
+} 
+
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.close-button{
+  width: 25px;
+  height: 25px;
+  border-radius: 30%;
+  font-size: 10px;
+  /* margin: 10px 0px 0px 10px; */
+}
+
+.close-button:hover{
+  background-color: lightgray;
+}
+
+.sidebar-title{
+  margin: 0 0 10px 0;
+  font-family: 'Lato';
+  font-size: 30px;
+  font-weight: bold;
+}
+
+.carousel{
+  /* background-color: red; */
+  position: relative;
+  width: 100%;
+  margin: 0;
+}
+
+.mySlides{
+  width: 100%;
+  height: 200px;
+  transition: 1s;
+  display: none;
+  /* margin: 10px 0px 0px 0px; */
+}
+
+.carousel-btn-left, .carousel-btn-right {
+  border: none;
+  margin: 3px;
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  background-color: rgba(128, 128, 128, 0);
+  color: rgba(255, 255, 255, 0.616);
+  transition: 0.2s;
+}
+.carousel-btn-right:hover, .carousel-btn-left:hover {
+  
+  background-color: rgba(98, 98, 105, 0.479);
+  color: white;
+}
+.carousel-btn-left {
+  position: absolute;
+  top: 40%;
+  left: 0%;
+}
+
+.carousel-btn-right {
+  position: absolute;
+  top: 40%;
+  right: 0%;
+}
+.starter-info-bar{
+  display:flex;
+  margin: 15px 10px 0px 10px;
+  flex-wrap:wrap;
+  /* background-color: green; */
+  justify-content: space-around;
+}
+
+.starter-box{
+  display:flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.starter-box-title{
+  font-weight: bold;
+  margin: 0px 0px 8px 0px;
+}
+
+.stars{
+  display: flex;
+}
+
+#numrating {
+  margin: 3px 3px 3px 0;
+}
+.fa-star, .fa-star-half-alt {
+  width: 10px;
+  height: 10px;
+  color: rgb(255, 208, 0);
+  margin: 3px 5px;
+}
+
+.price {
+  display: flex;
+  flex-direction: row;
+  margin: 0px 0px 6px 0px;
+}
+
+.description{
+  margin: 0px 0px 5px 0px;;
+}
+
+.description-box{
+  background-color: rgb(245, 245, 245);
+  padding: 5px;
+  margin: 5px 0;
+}
+
+.description-info{
+  margin: 2px;
+}
+
+#numrating {
+  margin: 3px 3px 3px 0;
+}
+.fa-dollar-sign {
+  width: 10px;
+  height: 10px;
+  color: green;
+  padding: 3px 0px 3px 5px;
+}
+
+.thumbup{
+  width: 20px;
+  height: 20px;
+}
+
+.recommend{
+  margin: 0px 0px 2px 0px;
+}
+
+.description-title {
+  margin: 5px 0px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.comment-section {
+  display: flex;
+  flex-direction: column;
+}
+.comment {
+  background-color: rgb(245, 245, 245);
+  padding: 5px;
+  margin: 5px 0;
+}
+.commentor {
+  font-weight: 600;
+}
+.comment-date {
+  font-weight: 300;
+}
+.comment-title {
+  margin: 5px 0;
+}
+.comment-body {
+  margin: 0;
+}
+  
+.add-btn{
+  height: 400px;
+  width: 400px;
+  background-color: indigo; 
+  padding: 20px 20px 20px; 
+  border-radius: 5px;
+}
+
+.add-btn:hover{
+  background-color: lightskyblue;
+}
+/* X-Small	<576px
+small ≥ 576px
+Medium ≥768px
+Large	≥992px
+Extra large	≥1200px
+Extra extra large	≥1400px */
