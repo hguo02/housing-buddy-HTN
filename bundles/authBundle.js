@@ -8,6 +8,7 @@ exports.getAllLocations = getAllLocations;
 exports.getLocationData = getLocationData;
 exports.getLocationReviews = getLocationReviews;
 exports.createReview = createReview;
+exports.enterGiveaway = enterGiveaway;
 exports.updateUser = updateUser;
 exports.getUserByID = getUserByID;
 exports.getLocationByID = getLocationByID;
@@ -190,16 +191,57 @@ async function createReview(locationID, review) {
   }
 }
 
-async function enterGiveaway(giveawayID) {} // ******************************************************************
+async function enterGiveaway(userID) {
+  const docID = firestore.collection(_constants.GIVEAWAYS).doc().id;
+  const entry = {
+    id: docID,
+    entrant: userID
+  };
+  const giveaway = await firestore.collection(_constants.GIVEAWAYS).doc('primary').get().then(value => value.data());
+  const user = await firestore.collection(_constants.USERS).doc(userID).get().then(value => value.data());
+  const entryCost = giveaway.entryCost;
+
+  if (user.giveawayPoints >= entryCost) {
+    try {
+      await firestore.collection(_constants.USERS).doc(userID).update({
+        giveawayPoints: _app.default.firestore.FieldValue.increment(-entryCost)
+      });
+      await firestore.collection(_constants.GIVEAWAYS).doc('primary').update({
+        entries: _app.default.firestore.FieldValue.arrayUnion([entry])
+      });
+      return true;
+    } catch (e) {
+      console.log(e);
+      return false;
+    }
+  } else {
+    return false;
+  }
+}
+
+async function getUserGiveawayEntries(userID) {
+  const res = firestore.collection(_constants.GIVEAWAYS).doc('primary').get().then(value => {
+    return value.data();
+  });
+  const entries = res.entries;
+  const counter = 0;
+
+  for (let i = 0; i < entries.length; i++) {
+    if (entries[i].entrant === userID) {
+      counter++;
+    }
+  }
+
+  return counter;
+} // ******************************************************************
 // Testing (ONLY FOR US DO NOT PUSH)
 // async function callAsync() {
 //     const result = await getLocationReviews('7TahmGCGceaQYEAx1Mgm');
 //     console.log(result);
 // }
 // callAsync();
-
-
-async function createLocation() {}
+// async function createLocation() {
+// }
 
 },{"./js/constants.js":3,"babel-polyfill":17,"firebase/compat/app":348,"firebase/compat/auth":349,"firebase/compat/firestore":350,"firebase/compat/storage":351,"uuid":354}],2:[function(require,module,exports){
 "use strict";

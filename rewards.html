@@ -33,9 +33,11 @@
         <marquee behavior="scroll" direction="right" class="banner" scrollamount="20">This Week's Giveaway: <span
                 id="giveaway" class="giveaway">***Apple Airpods***</span></marquee>
         <p class="points-display">Your Points<br><br><br><span class="points" id="currPoints">0</span></p>
-        <p class="rate">Receive <span class="num">5</span> points for each review!!!</p>
-        <p class="rate">Spend <span class="num">10</span> points to enter this week's giveaway!!!</p>
-        <button class="enter">Enter this week's giveaway</button>
+        <!-- <p class="entry-details">Your Entries: <span id="entryCount"></span></p> -->
+        <p class="rate">Receive <span class="num">5</span> points for each review!<br>Spend <span class="num">20</span>
+            points to enter this week's giveaway!</p>
+        <!-- <p class="rate">Spend <span class="num">20</span> points to enter this week's giveaway!</p> -->
+        <button onclick="enterCurrentGiveaway()" class="enter">Enter this week's giveaway</button>
     </div>
 
     <script src="./bundles/rewardsBundle.js"></script>

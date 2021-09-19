@@ -161,8 +161,50 @@ async function createReview(locationID, review) {
     }
 }
 
-async function enterGiveaway(giveawayID) {
+async function enterGiveaway(userID) {
+    const docID = firestore.collection(GIVEAWAYS).doc().id;
+    const entry = {
+        id: docID,
+        entrant: userID,
+    };
 
+    const giveaway = await firestore.collection(GIVEAWAYS).doc('primary').get().then((value) => value.data());
+    const user = await firestore.collection(USERS).doc(userID).get().then((value) => value.data());
+    const entryCost = giveaway.entryCost;
+
+    if (user.giveawayPoints >= entryCost) {
+        try {
+            await firestore.collection(USERS).doc(userID).update({
+                giveawayPoints: firebase.firestore.FieldValue.increment(-entryCost),
+            });
+            await firestore.collection(GIVEAWAYS).doc('primary').update({
+                entries: firebase.firestore.FieldValue.arrayUnion([entry]),
+            });
+            return true;
+        } catch (e) {
+            console.log(e);
+            return false;
+        }
+    } else {
+        return false;
+    }
+}
+
+async function getUserGiveawayEntries(userID) {
+    const res = firestore.collection(GIVEAWAYS).doc('primary').get().then((value) => {
+        return value.data();
+    });
+
+    const entries = res.entries;
+    const counter = 0;
+
+    for (let i = 0; i < entries.length; i++) {
+        if (entries[i].entrant === userID) {
+            counter++;
+        }
+    }
+
+    return counter;
 }
 
 
@@ -176,9 +218,9 @@ async function enterGiveaway(giveawayID) {
 // callAsync();
 
 
-async function createLocation() {
+// async function createLocation() {
 
-}
+// }
 
 
 
@@ -187,6 +229,7 @@ export {
     getLocationData,
     getLocationReviews,
     createReview,
+    enterGiveaway,
     updateUser,
     getUserByID,
     getLocationByID,

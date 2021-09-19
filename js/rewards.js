@@ -1,4 +1,4 @@
-import { auth } from "../index";
+import { auth, enterGiveaway } from "../index";
 
 let currentUserID;
 const navElements = document.querySelectorAll('.private');
@@ -30,9 +30,14 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-// function signUserOut() {
-    // signOut();
-    // window.location.replace('index.html');
-// }
 
-// window.signUserOut = signUserOut;
+function enterCurrentGiveaway() {
+    enterGiveaway(currentUserID).then((success) => {
+        if (success) {
+            // show success 
+        } else {
+
+        }
+    });
+
+}
