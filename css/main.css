@@ -5,22 +5,50 @@
   transition: width 0.3s ease-in;
 }
 .navbar {
-  z-index: 2;
+  z-index: 10;
 }
+
+/* .review {
+  width: 90vh;
+  padding: 10px;
+  width: 30%;
+  display: none; */
+
+/* } */
 #info-bar{
   font-family: 'Lato';
-  height: 90dvh;
+  height: 90vh;
   width: 0;
   /* background-color: */
   transition: width .3s ease-in;
-  box-shadow: -2px 0px 10px rgb(180, 179, 179);
+  transition: opacity 0.05s;
+  box-shadow: -1px 10px 10px rgb(180, 179, 179);
   z-index: 1;
   overflow-wrap: normal;
-  display:none;
+  display: none;
   flex-direction: column;
   padding: 10px;
   overflow-y: scroll;
-
+  position: absolute;
+  right: 0%;
+  background-color: white;
+  opacity: 100;
+}
+#review-page{
+  font-family: 'Lato';
+  height: 90vh;
+  width: 0;
+  transition: width .3s ease-in;
+  box-shadow: -1px 10px 10px rgb(180, 179, 179);
+  z-index: 0;
+  overflow-wrap: normal;
+  display: none;
+  flex-direction: column;
+  padding: 10px;
+  overflow-y: scroll;
+  position: absolute;
+  right:0%;
+  background-color: white;
 }
 
 
@@ -196,15 +224,74 @@
 }
   
 .add-btn{
-  height: 400px;
-  width: 400px;
-  background-color: indigo; 
-  padding: 20px 20px 20px; 
+  width: 20%;
+  background-color: lightblue; 
+  padding: 10px;
   border-radius: 5px;
+  text-align:center;
 }
 
+.add-review{
+  margin: 0;
+}
+
+#review-page {
+  display: flex;
+  flex-direction: column;
+}
+#review-page h1 {
+  margin-bottom: 15px;
+}
+#review-page p {
+  margin: 10px 0 0 0;
+  font-weight: 400;
+  font-size: 18px;
+
+}
 .add-btn:hover{
   background-color: lightskyblue;
+}
+
+
+.review-stars {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 50%;
+  margin: 10px 0 30px 0;
+
+}
+.review-stars i {
+  font-size: 30px;
+}
+
+#review-title {
+  font-family: 'Lato';
+  width: 98%;
+}
+#review-description {
+  font-family: 'Lato';
+    width: 98%;
+  height: 100px;
+}
+
+.review-recommend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.fa-thumbs-up, .fa-thumbs-down {
+  font-size: 30px;
+}
+
+.fa-thumbs-up {
+  color: green;
+}
+
+.fa-thumbs-down {
+  color: red;
 }
 /* X-Small	<576px
 small ≥ 576px

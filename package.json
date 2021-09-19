@@ -7,6 +7,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "browserify index.js -p esmify > bundle.js",
+    "buildMain": "browserify ./js/main.js -p esmify > mainbundle.js",
+    "createBundle": "browserify index.js ./js/main.js -p esmify > newBundle.js",
     "watch": "watchify index.js -o dist/bundle.js -v"
   },
   "browserify": {
@@ -28,6 +30,7 @@
     "esmify": "^2.1.1",
     "firebase": "^9.0.2",
     "reading-time": "^1.5.0",
+    "uuid": "^8.3.2",
     "watchify": "^4.0.0"
   },
   "devDependencies": {

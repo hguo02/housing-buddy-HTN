@@ -1,4 +1,5 @@
 // import { getLocationReviews } from './firebase-functions.js';
+// import { createReview } from '../index.js';
 
 var users = [
     {
@@ -106,6 +107,7 @@ function initMap() {
             currBuildingId = info.id;
 
             document.getElementById("address").innerHTML = info.adress;
+            document.getElementById("address2").innerHTML = info.adress;
             //console.log(document.getElementById("adress").innerHTML)
 
             var imgTags = document.getElementsByClassName("mySlides");
@@ -137,9 +139,13 @@ function initMap() {
 
             map.setCenter({ lat: marker.getPosition().lat(), lng: marker.getPosition().lng() })
             //sampleinfo.open(map, marker);
-            document.getElementById("info-bar").style.display = "flex"
             document.getElementById("map").style.width = "70%"
+            document.getElementById("info-bar").style.display = "flex"
             document.getElementById("info-bar").style.width = "30%"
+            document.getElementById("info-bar").style.opacity = "100%"
+            document.getElementById("info-bar").style.zIndex = "2"
+            document.getElementById("review-page").style.width = "30%"
+            document.getElementById("review-page").style.display = "flex"
 
         });
     }
@@ -148,7 +154,10 @@ function initMap() {
 
 function resetbar() {
     document.getElementById("map").style.width = "100%"
+    document.getElementById("info-bar").style.display = "none"
     document.getElementById("info-bar").style.width = "0%"
+    document.getElementById("review-page").style.display = "none"
+    document.getElementById("review-page").style.width = "0%"
 }
 
 
@@ -210,6 +219,55 @@ function price_animation(price) {
         console.log("lakjdf")
     }
     if (price >= 1000) { document.getElementById("dollar3").style.display = "block" }
+}
+
+var userRating;
+var userRecommend;
+function addReview() {
+    document.getElementById("info-bar").style.opacity = '0';
+    setTimeout(() => {
+        document.getElementById("info-bar").style.zIndex = '-1';
+
+    }, 50)
+    for (var i = 1; i <= 5; i++) {
+        document.getElementById("review-star" + i).setAttribute('class', 'far fa-star')
+    }
+    userRating = 0;
+    userRecommend = false;
+
+
+}
+
+
+function reviewStarsClick(starNum) {
+    for (var i = 1; i <= 5; i++) {
+        if (i <= starNum) {
+            document.getElementById("review-star" + i).setAttribute('class', 'fas fa-star')
+        } else {
+            document.getElementById("review-star" + i).setAttribute('class', 'far fa-star')
+        }
+    }
+    uesrRating = starNum;
+}
+
+function reviewRecommendClick(recommend) {
+    if (recommend) {
+        document.getElementById("review-thumbs-up").setAttribute('class', 'fas fa-thumbs-up');
+        document.getElementById("review-thumbs-down").setAttribute('class', 'far fa-thumbs-down');
+    } else {
+        document.getElementById("review-thumbs-up").setAttribute('class', 'far fa-thumbs-up');
+        document.getElementById("review-thumbs-down").setAttribute('class', 'fas fa-thumbs-down');
+    }
+}
+function logIN() {
+    var username = document.getElementById("userid").value
+    var password = document.getElementById("password").value
+
+    for (i = 0; i < users.length(); i++) {
+        if (username == users[i].userid && password == users[i].password) {
+            console.log(username + 'has logged in');
+        }
+    }
 }
 
 

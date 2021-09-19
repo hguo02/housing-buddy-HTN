@@ -91,16 +91,18 @@
             <div class="description">
                 <p class="description-title">Description</p>
                 <div class="description-box">
-                    <p class="description-info" id="description-info">Lorem ipsum dolor sit amet, consectetur adipiscing
+                    <p class="description-info" id="description-info">Lorem ipsum dolor sit amet, consectetur
+                        adipiscing
                         elit, sed do eiusmod tempor incididunt ut labore et dolore magna
-                        aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea
+                        aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip
+                        ex ea
                         commodo consequat. Duis
                     </p>
                 </div>
             </div>
 
             <p class="description-title">Reviews</p>
-            <div class="add-btn">
+            <div class="add-btn" onclick="addReview()">
                 <p class="add-review">Add Review</p>
             </div>
             <div class="comment-section">
@@ -110,9 +112,38 @@
                     <p class="comment-body">This place is amazing</p>
                 </div>
             </div>
+        </div>
 
+        <div id="review-page">
+            <button href="#" onclick="resetbar()" class="close-button" aria-label="Close alert" type="button">x</button>
+            <p>Rate this Building: </p>
+            <h1 class="sidebar-title" id="address2">ayo sample address</h1>
+            <!-- <p>Overall Rating</p> -->
+            <div class="review-stars">
+                <i class="fas fa-star" id="review-star1" onclick="reviewStarsClick(1)"></i>
+                <i class="fas fa-star" id="review-star2" onclick="reviewStarsClick(2)"></i>
+                <i class="fas fa-star" id="review-star3" onclick="reviewStarsClick(3)"></i>
+                <i class="far fa-star" id="review-star4" onclick="reviewStarsClick(4)"></i>
+                <i class="far fa-star" id="review-star5" onclick="reviewStarsClick(5)"></i>
+            </div>
+
+            <p>Add a headline</p>
+            <input type="text" id="review-title" name="review-title"
+                placeholder="What's most important to know?"></input>
+            <p>Add a written review</p>
+            <textarea type="text" id="review-description" name="review-description"
+                placeholder="What did you like or dislike?"></textarea><br>
+
+            <div class="review-recommend">
+                <p>Would you Reccomend this place to others?</p>
+                <i class="far fa-thumbs-up" id="review-thumbs-up" onclick="reviewRecommendClick(true)"></i>
+                <i class="far fa-thumbs-down" id="review-thumbs-down" onclick="reviewRecommendClick(false)"></i>
+            </div>
+
+            <input type="submit" value="Submit">
 
         </div>
+
 
 
     </div>
@@ -149,18 +180,13 @@
         }
     </script> -->
 
-    <!-- <script type="babel/text" src="js/firebase.js"></script> -->
-    <!-- <script type="text/babel" src="js/firebase-functions.js"></script> -->
-
-    <!-- <script type="text/javascript" src="./dist/bundle.js"></script> -->
-    <!-- <script type="text/javascript" src="js/index.js"></script> -->
-    <!-- <script type="text/javascript" src="js/firebase-functions.js"></script> -->
+    <!-- <script src="mainbundle.js"></script> -->
     <script src="bundle.js"></script>
     <script src="js/main.js"></script>
+    <!-- <script src="newBundle.js"></script> -->
     <script
         src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAaGYuCB4vdsIH0FJc8d5inAJzw_88XtCI&callback=initMap&libraries=&v=weekly"
-        async>
-        </script>
+        async defer></script>
 </body>
 
 </html>
