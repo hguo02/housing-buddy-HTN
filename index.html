@@ -18,18 +18,21 @@
         rel="stylesheet">
 
     <script src="https://kit.fontawesome.com/0bb453d0b7.js" crossorigin="anonymous"></script>
+    <!-- <script src="newBundle.js"></script> -->
 
 </head>
 
 <body>
+
     <nav class="navbar">
-        <div class="app-logo">
-            <img src="img/logo.png" alt="log">
-        </div>
+        <a class="app-logo" href="/">
+            <img src="https://firebasestorage.googleapis.com/v0/b/housing-buddy.appspot.com/o/logoCropped.png?alt=media&token=e594a726-ae55-4005-b45c-0a0bc999c48b"
+                alt="log" href="/">
+        </a>
         <div class="links">
             <a class="nav-link" href="/">Home</a>
-            <a class="nav-link" href="rewards.html">Rewards</a>
-            <a class="nav-link" href="profile.html">Profile</a>
+            <a class="private nav-link" href="rewards.html">Rewards</a>
+            <a class="private nav-link" href="profile.html">Profile</a>
             <a class="nav-link" href="splash.html">About</a>
             <a class="auth-btn" href="auth.html">Sign In</a>
         </div>
@@ -108,6 +111,11 @@
             <div class="comment-section">
                 <div class="comment">
                     <span class="commentor">Hitanshu</span> | <span class="comment-date">August 15 2021</span>
+                    <i class="fas fa-star comment-star"></i>
+                    <i class="fas fa-star comment-star"></i>
+                    <i class="fas fa-star comment-star"></i>
+                    <i class="far fa-star comment-star"></i>
+                    <i class="far fa-star somment-star"></i>
                     <h3 class="comment-title">The first comment</h3>
                     <p class="comment-body">This place is amazing</p>
                 </div>
@@ -115,7 +123,8 @@
         </div>
 
         <div id="review-page">
-            <button href="#" onclick="resetbar()" class="close-button" aria-label="Close alert" type="button">x</button>
+            <button href="#" onclick="window.resetbar()" class="close-button" aria-label="Close alert"
+                type="button">x</button>
             <p>Rate this Building: </p>
             <h1 class="sidebar-title" id="address2">ayo sample address</h1>
             <!-- <p>Overall Rating</p> -->
@@ -135,12 +144,12 @@
                 placeholder="What did you like or dislike?"></textarea><br>
 
             <div class="review-recommend">
-                <p>Would you Reccomend this place to others?</p>
+                <p>Would you Recommend this place to others?</p>
                 <i class="far fa-thumbs-up" id="review-thumbs-up" onclick="reviewRecommendClick(true)"></i>
                 <i class="far fa-thumbs-down" id="review-thumbs-down" onclick="reviewRecommendClick(false)"></i>
             </div>
 
-            <input type="submit" value="Submit">
+            <button id="review-submit" onclick="reviewSubmit()">Submit</button>
 
         </div>
 
@@ -181,12 +190,22 @@
     </script> -->
 
     <!-- <script src="mainbundle.js"></script> -->
-    <script src="bundle.js"></script>
-    <script src="js/main.js"></script>
-    <!-- <script src="newBundle.js"></script> -->
+    <!-- <script src="bundle.js"></script> -->
+    <!-- <script src="js/main.js"></script> -->
+
+    <script src="./bundles/newBundle.js"></script>
     <script
-        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAaGYuCB4vdsIH0FJc8d5inAJzw_88XtCI&callback=initMap&libraries=&v=weekly"
-        async defer></script>
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAaGYuCB4vdsIH0FJc8d5inAJzw_88XtCI&libraries=&v=weekly&callback=initMap"></script>
+
+    <!-- <script>
+
+        console.log(newBundle);
+        let script = document.createElement('script');
+        script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyAaGYuCB4vdsIH0FJc8d5inAJzw_88XtCI&libraries=&v=weekly&callback=initMap";
+        document.body.appendChild(script);
+    </script> -->
+
+
 </body>
 
 </html>

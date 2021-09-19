@@ -1,122 +1,111 @@
 // import { getLocationReviews } from './firebase-functions.js';
-// import { createReview } from '../index.js';
+import {
+    createReview,
+    getAllLocations,
+    getLocationData,
+    getLocationReviews,
+    getUserByID,
+    getLocationByID,
+    getCurrentUser,
+    getServerTimestamp,
+    updateLocationRating,
+    auth,
+    signOut,
+} from "../index";
 
-var users = [
-    {
-        userid: "hitanshud123",
-        name: "Hitanshu Dalwadi",
-        password: "pass1",
-        points: 10
-    },
-    {
-        userid: "vlad",
-        name: "Nicholas",
-        password: "pass2",
-        points: 12
-    },
-    {
-        userid: "zesponge",
-        name: "Mario Su",
-        password: "pass3",
-        points: 1
-    },
-    {
-        userid: "hguo",
-        name: "Henry Guo",
-        password: "pass4",
-        points: 19
+
+let hasReviewPermissions = false;
+let currBuildingId = 0;
+let currentUserID;
+let buildingList;
+
+const navElements = document.querySelectorAll('.private');
+
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        currentUserID = user.uid;
+        console.log('user good');
+        console.log(user.uid);
+
+        hasReviewPermissions = true;
+
+        // const authBtn = document.getElementsByClassName('auth-btn');
+        const authBtn = document.querySelector('.auth-btn');
+        authBtn.innerHTML = 'Logout';
+        authBtn.setAttribute('onclick', 'signUserOut()');
+        authBtn.setAttribute('href', '#');
+        authBtn.style.cursor = 'pointer';
+    } else {
+        console.log('user bad');
+
+        hasReviewPermissions = false;
+
+        const authBtn = document.querySelector('.auth-btn');
+        authBtn.innerHTML = 'Sign In';
+        authBtn.setAttribute('href', 'auth.html');
+        authBtn.removeAttribute('onclick');
+
+        for (let i = 0; i < navElements.length; i++) {
+            navElements[i].setAttribute('href', 'auth.html')
+        }
     }
-]
-var buildingInfo = [
-    {
-        id: 0,
-        lat: 43.466667,
-        lng: -80.516670,
-        adress: "sample Adress 123",
-        imglist: ["img/domus1.jpeg", "img/domus2.jpeg", "img/domus3.jpeg", "img/domus4.jpeg"],
-        rating: 3.9,
-        price: 715,
-        dsecription: "This is the sample description for the first marker.<br>This is the best place to live in as a student studying in the University of Waterloo",
-        comments: [
-            {
-                user: users[0],
-                date: new Date('December 17, 1995 03:24:00'),
-                title: "This place is amazing!!!",
-                dsecription: "I lived here for 8 months, and it was the best experience I ever had. THe place is fully furnished, has all the amenities, and the staff is really nice.",
-                likes: 10,
-                dislikes: 2,
-            },
-            {
-                user: users[2],
-                date: new Date('December 10, 2095 03:24:00'),
-                title: "This place is amazing!!!",
-                dsecription: "I lived here for 8 months, and it was the best experience I ever had. THe place is fully furnished, has all the amenities, and the staff is really nice.",
-                likes: 10,
-                dislikes: 2,
-            },
-            {
-                user: users[1],
-                date: new Date('December 111, 2095 03:24:00'),
-                title: "This placalsdkflksaje is amazing!!!",
-                dsecription: "I lived hasdlkasldfkaslkjfere for 8 months, and it was the best experience I ever had. THe place is fully furnished, has all the amenities, and the staff is really nice.",
-                likes: 10,
-                dislikes: 2,
-            }
-        ]
-    },
+});
 
-    {
-        id: 1,
-        lat: 43.5,
-        lng: -80.6,
-        adress: "sample Adress 321",
-        imglist: ["img/domus1.jpeg", "img/domus2.jpeg"],
-        rating: 2.6,
-        price: 415,
-        dsecription: "This is the sample description for the second marker.<br>This is the best place to live in as a student studying in the University of Waterloo",
-        comments: []
-    }
-]
-var currBuildingId = 0;
 
-function initMap() {
+async function initMap() {
     var options = {
-        zoom: 14,
+        zoom: 16,
         center: { lat: 43.4723, lng: -80.5449 }
     }
 
     var map = new google.maps.Map(document.getElementById('map'), options);
 
-    // add sample marker 
-    addMarker(buildingInfo[0]);
-    addMarker(buildingInfo[1]);
+    // Add markers for location 
+    buildingList = await getAllLocations();
+
+    for (let i = 0; i < buildingList.length; i++) {
+        addMarker(buildingList[i]);
+    }
 
 
     function addMarker(info) {
 
         var marker = new google.maps.Marker({
-            position: { lat: info.lat, lng: info.lng },
-            map: map
+            position: { lat: info.latitude, lng: info.longitude },
+            map: map,
         });
-
         var sampleinfo = new google.maps.InfoWindow({
-            content: '<h1>' + info.adress + '</h1>'
+            content: '<h1>' + info.address + '</h1>'
         });
 
-        marker.addListener('click', function () {
+        marker.addListener('click', async function () {
             currBuildingId = info.id;
 
-            document.getElementById("address").innerHTML = info.adress;
-            document.getElementById("address2").innerHTML = info.adress;
+            document.getElementById("address").innerHTML = info.address;
+            document.getElementById("address2").innerHTML = info.address;
             //console.log(document.getElementById("adress").innerHTML)
 
             var imgTags = document.getElementsByClassName("mySlides");
-            for (var i = 0; i < Math.min(10, info.imglist.length); i++) {
-                imgTags[i].setAttribute("src", info.imglist[i]);
+
+            console.log(info.imageURLs)
+            if (info.imageURLs.length == 0) {
+                document.querySelector('.carousel').style.display = 'none';
+            } else {
+                document.querySelector('.carousel').style.display = 'block';
+                console.log(document.querySelector('.carousel').style.display)
+                for (var i = 0; i < Math.min(10, info.imageURLs.length); i++) {
+                    imgTags[i].setAttribute("src", info.imageURLs[i]);
+                    console.log(info.imageURLs[i])
+                }
             }
+
+            showDivs(1);
+            // document.querySelector('.carousel').style.display = 'none';
+
             star_rating_animation(info.rating);
             price_animation(info.price);
-            document.getElementById("description-info").innerHTML = info.dsecription;
+            document.getElementById("description-info").innerHTML = info.description;
+            document.getElementById("num-recommendations").innerHTML = info.recommendedCount;
 
             document.getElementsByClassName("comment-section")[0].innerHTML = '';
             // old_comments = document.getElementsByClassName("comment");
@@ -130,10 +119,30 @@ function initMap() {
             // }
             // console.log(document.getElementsByClassName("comment"))
 
-            for (var i = 0; i < info.comments.length; i++) {
-                new_comment = document.createElement("div");
+            const locationReviews = await getLocationReviews(info.id);
+
+            for (var i = 0; i < info.reviewIDs.length; i++) {
+                var stars = "";
+                for (var j = 0; j < 5; j++) {
+                    if (j + 1 <= locationReviews[i].rating) {
+                        stars += '<i class="fas fa-star comment-star"></i>'
+                    } else {
+                        stars += '<i class="far fa-star comment-star"></i>'
+                    }
+                }
+
+
+                var new_comment = document.createElement("div");
                 new_comment.setAttribute('class', 'comment');
-                new_comment.innerHTML = '<span class="commentor">' + info.comments[i].user.userid + '</span> | <span class="comment-date">' + info.comments[i].date.toDateString() + '</span><h3 class="comment-title">' + info.comments[i].title + '</h3> <p class="comment-body">' + info.comments[i].dsecription + '</p>'
+
+                console.log(locationReviews[i].userID)
+                var userName = "Undefined"
+                if (await getUserByID(locationReviews[i].userID)) {
+                    userName = (await getUserByID(locationReviews[i].userID)).firstName;
+                }
+                new_comment.innerHTML = '<span class="commentor">' + userName + '</span> | <span class="comment-date">' + locationReviews[i].timestamp.toDate().toDateString() + '<br>' + stars + '<br><h3 class="comment-title">' + locationReviews[i].title + '</h3> <p class="comment-body">' + locationReviews[i].description + '</p>'
+                var commentStars = document.getElementsByClassName('comment-star')
+
                 document.getElementsByClassName("comment-section")[0].appendChild(new_comment);
             }
 
@@ -151,6 +160,8 @@ function initMap() {
     }
 }
 
+window.initMap = initMap;
+
 
 function resetbar() {
     document.getElementById("map").style.width = "100%"
@@ -160,33 +171,34 @@ function resetbar() {
     document.getElementById("review-page").style.width = "0%"
 }
 
-
+window.resetbar = resetbar;
 
 var slideIndex = 1;
-showDivs(slideIndex);
+// showDivs(slideIndex);
 
 function plusDivs(n) {
     showDivs(slideIndex += n);
 }
 
-function showDivs(n) {
-    console.log(currBuildingId)
+window.plusDivs = plusDivs
+
+async function showDivs(n) {
+    var locationInfo = (await getLocationByID(currBuildingId))
     var i;
     var x = document.getElementsByClassName("mySlides");
-    if (n > buildingInfo[currBuildingId].imglist.length) { slideIndex = 1 }
-    if (n < 1) { slideIndex = buildingInfo[currBuildingId].imglist.length };
-    for (i = 0; i < buildingInfo[currBuildingId].imglist.length; i++) {
+    if (n > locationInfo.imageURLs.length) { slideIndex = 1 }
+    if (n < 1) { slideIndex = locationInfo.imageURLs.length };
+    for (i = 0; i < 10; i++) {
         x[i].style.opacity = "0";
         x[i].style.display = "none";
-
     }
     x[slideIndex - 1].style.opacity = "100";
     x[slideIndex - 1].style.display = "block";
 }
-
+window.showDivs = showDivs
 
 function star_rating_animation(rating) {
-    document.getElementById("numrating").innerHTML = "" + rating;
+    document.getElementById("numrating").innerHTML = "" + Math.round(rating * 10) / 10;
 
     rating = Math.round(rating * 2) / 2;
 
@@ -212,11 +224,9 @@ function price_animation(price) {
     for (var i = 1; i < 4; i++) {
         document.getElementById("dollar" + i).style.display = "none";
     }
-    console.log(price >= 500);
     document.getElementById("dollar1").style.display = "block";
     if (price >= 500) {
         document.getElementById("dollar2").style.display = "block";
-        console.log("lakjdf")
     }
     if (price >= 1000) { document.getElementById("dollar3").style.display = "block" }
 }
@@ -224,19 +234,34 @@ function price_animation(price) {
 var userRating;
 var userRecommend;
 function addReview() {
-    document.getElementById("info-bar").style.opacity = '0';
-    setTimeout(() => {
-        document.getElementById("info-bar").style.zIndex = '-1';
+    if (hasReviewPermissions) {
+        document.getElementById("info-bar").style.opacity = '0';
+        setTimeout(() => {
+            document.getElementById("info-bar").style.zIndex = '-1';
 
-    }, 50)
-    for (var i = 1; i <= 5; i++) {
-        document.getElementById("review-star" + i).setAttribute('class', 'far fa-star')
+        }, 50)
+        for (var i = 1; i <= 5; i++) {
+            document.getElementById("review-star" + i).setAttribute('class', 'far fa-star')
+        }
+        userRating = 0;
+        userRecommend = false;
+    } else {
+        window.location.replace('auth.html');
     }
-    userRating = 0;
-    userRecommend = false;
 
 
+
+    // const review = {
+    //     description: "testing",
+    //     id: "testingid",
+    //     title: "placeholder",
+    //     reviewerID: "abc",
+    // };
+
+    // createReview('7TahmGCGceaQYEAx1Mgm', review);
 }
+
+window.addReview = addReview;
 
 
 function reviewStarsClick(starNum) {
@@ -247,27 +272,85 @@ function reviewStarsClick(starNum) {
             document.getElementById("review-star" + i).setAttribute('class', 'far fa-star')
         }
     }
-    uesrRating = starNum;
+    userRating = starNum;
 }
+window.reviewStarsClick = reviewStarsClick;
 
 function reviewRecommendClick(recommend) {
     if (recommend) {
         document.getElementById("review-thumbs-up").setAttribute('class', 'fas fa-thumbs-up');
         document.getElementById("review-thumbs-down").setAttribute('class', 'far fa-thumbs-down');
+        userRecommend = true;
     } else {
         document.getElementById("review-thumbs-up").setAttribute('class', 'far fa-thumbs-up');
         document.getElementById("review-thumbs-down").setAttribute('class', 'fas fa-thumbs-down');
+        userRecommend = false;
     }
 }
-function logIN() {
-    var username = document.getElementById("userid").value
-    var password = document.getElementById("password").value
+window.reviewRecommendClick = reviewRecommendClick;
 
-    for (i = 0; i < users.length(); i++) {
-        if (username == users[i].userid && password == users[i].password) {
-            console.log(username + 'has logged in');
-        }
-    }
+function click(x, y) {
+    var ev = new MouseEvent('click', {
+        'view': window,
+        'bubbles': true,
+        'cancelable': true,
+        'screenX': x,
+        'screenY': y
+    });
+
+    var el = document.elementFromPoint(x, y);
+
+    el.dispatchEvent(ev);
 }
+
+async function reviewSubmit() {
+
+    let centerX = document.getElementById("map").offsetLeft + document.getElementById("map").offsetWidth / 2;
+    let centerY = document.getElementById("map").offsetTop + document.getElementById("map").offsetHeight / 2;
+    console.log(centerX)
+    console.log(centerY)
+
+    // click(centerX, centerY);
+
+    var new_comment = {
+        userID: currentUserID,  // change this
+        timestamp: getServerTimestamp(),
+        rating: userRating,
+        recommended: userRecommend,
+        title: document.getElementById('review-title').value,
+        description: document.getElementById('review-description').value,
+    };
+    var locationInfo = (await getLocationByID(currBuildingId))
+    var newRating = (locationInfo.rating * locationInfo.reviewIDs.length + userRating) / (locationInfo.reviewIDs.length + 1)
+    var newRecommend = locationInfo.recommendedCount;
+    if (userRecommend) { newRecommend += 1 }
+
+    updateLocationRating(currBuildingId, newRating, newRecommend)
+    console.log(new_comment)
+    createReview(currBuildingId, new_comment).then((_) => {
+        console.log('DONE!')
+        location.reload();
+    });
+
+    //
+
+    // buildingInfo[currBuildingId].comments.unshift(new_comment);
+    // conmouseleave.log(buildingInfo)
+}
+window.reviewSubmit = reviewSubmit;
+
+
+function signUserOut() {
+    signOut();
+    window.location.reload();
+}
+
+window.signUserOut = signUserOut;
+
+// document.getElementById('map').addEventListener('click', (event) => {
+//     console.log(event.clientX, event.clientY)
+// })
+
+// window.mouse_position = mouse_position
 
 

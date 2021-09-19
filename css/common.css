@@ -14,7 +14,7 @@ body {
   }
 
 .app-logo{
-    padding: 12px 2vw;
+    padding: 2px;
     display: flex;
     border-radius: 5px;
   }
@@ -48,4 +48,5 @@ body {
     color: white;
     font-size: 1.25em;
     text-decoration: none;
+    filter: drop-shadow(2px 2px 2px rgb(37, 35, 35));
   }

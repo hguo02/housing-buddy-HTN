@@ -4,13 +4,28 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.getAllLocations = getAllLocations;
+exports.getLocationData = getLocationData;
+exports.getLocationReviews = getLocationReviews;
 exports.createReview = createReview;
+exports.updateUser = updateUser;
+exports.getUserByID = getUserByID;
+exports.getLocationByID = getLocationByID;
+exports.getCurrentUser = getCurrentUser;
+exports.getServerTimestamp = getServerTimestamp;
+exports.signInWithEmailAndPassword = signInWithEmailAndPassword;
+exports.signUpWithEmailAndPassword = signUpWithEmailAndPassword;
+exports.updateLocationRating = updateLocationRating;
+exports.signOut = signOut;
+exports.auth = void 0;
 
 require("babel-polyfill");
 
 var _constants = require("./js/constants.js");
 
 var _app = _interopRequireDefault(require("firebase/compat/app"));
+
+require("firebase/compat/auth");
 
 require("firebase/compat/firestore");
 
@@ -46,10 +61,78 @@ const firebaseConfig = {
 const app = _app.default.initializeApp(firebaseConfig);
 
 const firestore = app.firestore();
-const storage = app.storage(); // const app = initializeApp(firebaseConfig);
-// const analytics = getAnalytics(app);
-// const firestore = getFirestore(app);
+const storage = app.storage();
+const auth = app.auth(); // ******************************************************************
+// Auth
+
+exports.auth = auth;
+
+async function signInWithEmailAndPassword(email, password) {
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+  } catch (e) {
+    console.log(e);
+  }
+}
+
+async function signUpWithEmailAndPassword(email, password) {
+  try {
+    const credential = await auth.createUserWithEmailAndPassword(email, password);
+    return credential;
+  } catch (e) {
+    console.log(e);
+  }
+}
+
+async function signOut() {
+  try {
+    await auth.signOut();
+  } catch (e) {
+    console.log(e);
+  }
+}
+
+async function updateUser(user, userID) {
+  try {
+    await firestore.collection(_constants.USERS).doc(user.userID).set(user); // await firestore.collection(USERS).doc(user.id).set(user).then((_) => {
+    //     return user;
+    // });
+  } catch (e) {
+    console.log(e);
+  }
+}
+
+async function getUserByID(id) {
+  return (await firestore.collection(_constants.USERS).doc(id).get()).data();
+}
+
+async function getLocationByID(id) {
+  return (await firestore.collection(_constants.LOCATIONS).doc(id).get()).data();
+}
+
+async function updateLocationRating(id, newRating, newRecommend) {
+  try {
+    await firestore.collection(_constants.LOCATIONS).doc(id).update({
+      rating: newRating,
+      recommendedCount: newRecommend
+    });
+    return true;
+  } catch (e) {
+    console.log(e);
+    return false;
+  }
+}
+
+function getCurrentUser() {
+  return auth.currentUser;
+}
+
+function getServerTimestamp() {
+  return _app.default.firestore.FieldValue.serverTimestamp();
+} // ******************************************************************
+// App Functions
 /// Uploads [image] to Firebase Storage, and returns the download URL.
+
 
 async function uploadImageToFirebaseStorage(image) {
   const id = _uuid.default.v4();
@@ -57,13 +140,19 @@ async function uploadImageToFirebaseStorage(image) {
   const storageRef = storage.ref().child(`${_constants.IMAGES}/${id}`);
   await storageRef.put(image);
   return await storageRef.getDownloadURL();
-} /// Returns a JSON location object for [locationID].
+} /// Returns an array of all the JSON location objects found in the registry.
+
+
+async function getAllLocations() {
+  const documentSnapshot = await firestore.collection(_constants.LOCATIONS).get();
+  return documentSnapshot.docs.map(element => element.data());
+} /// Returns a JSON location object for [locationID]. √
 
 
 async function getLocationData(locationID) {
   const documentSnapshot = await firestore.collection(_constants.LOCATIONS).doc(locationID).get();
   return documentSnapshot.data();
-} /// Returns an array of JSON review objects for [locationID].
+} /// Returns an array of JSON review objects for [locationID]. √
 
 
 async function getLocationReviews(locationID) {
@@ -75,27 +164,11 @@ async function getLocationReviews(locationID) {
     const id = reviewIDs[i];
     const review = await firestore.collection(_constants.REVIEWS).doc(id).get();
     reviewObjects.push(review.data());
-  } // for (let id in reviewIDs) {
-  //     console.log(id);
-  //     // const review = await firestore.collection(REVIEWS).doc(id).get().then(() => {
-  //     //     console.log("completed" + id);
-  //     // });
-  //     // console.log(review.data());
-  //     // reviewObjects.push(review.data());
-  // }
-  // reviewIDs.forEach((id) => {
-  //     console.log(id);
-  //     // reviewObjects.push(
-  //     //     await firestore.collection(REVIEWS).doc(id).get().then((value) => {
-  //     //         return value.data();
-  //     //     })
-  //     // );
-  // });
-
+  }
 
   console.log(`Retrieved ${reviewObjects.length} reviews for ${locationID}.`);
   return reviewObjects;
-} /// Creates a review for [locationID]. Accepts a JSON object [review].
+} /// Creates a review for [locationID]. Accepts a JSON object [review]. √
 /// Returns true if succeeded, else false.
 
 
@@ -117,39 +190,18 @@ async function createReview(locationID, review) {
   }
 }
 
-async function callAsync() {
-  const result = await getLocationReviews('7TahmGCGceaQYEAx1Mgm');
-  console.log(result);
-}
-
-callAsync(); // const review = {
-//     description: "Nobody likes this place",
-//     reviewerID: "noid",
-//     title: "placeholder",
-//     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-// };
-// createReview('7TahmGCGceaQYEAx1Mgm', review);
-// console.log(await createReview('7TahmGCGceaQYEAx1Mgm', review));
-// const file = new File('./img/domus1.jpeg');
-// uploadImageToFirebaseStorage(file);
-// async function getLocationReviews(locationID) {
-//     console.log('executing');
-//     const documentSnapshot = await firestore.collection(LOCATIONS).doc(locationID).get();
-//     const reviewIDs = documentSnapshot.data().reviewIDs;
-//     let reviewObjects = [];
-//     reviewIDs.forEach(async (id) => {
-//         reviewObjects.push(
-//             await firestore.collection(REVIEWS).doc(id).get().then((value) => {
-//                 return value.data();
-//             })
-//         );
-//         console.log(id);
-//     });
-//     return reviewObjects;
+async function enterGiveaway(giveawayID) {} // ******************************************************************
+// Testing (ONLY FOR US DO NOT PUSH)
+// async function callAsync() {
+//     const result = await getLocationReviews('7TahmGCGceaQYEAx1Mgm');
+//     console.log(result);
 // }
-// getLocationReviews('DJBUYlcSJIeTfvUkCMQO');
+// callAsync();
 
-},{"./js/constants.js":2,"babel-polyfill":13,"firebase/compat/app":344,"firebase/compat/firestore":345,"firebase/compat/storage":346,"uuid":349}],2:[function(require,module,exports){
+
+async function createLocation() {}
+
+},{"./js/constants.js":2,"babel-polyfill":17,"firebase/compat/app":348,"firebase/compat/auth":349,"firebase/compat/firestore":350,"firebase/compat/storage":351,"uuid":354}],2:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -170,6 +222,378 @@ const IMAGES = 'images';
 exports.IMAGES = IMAGES;
 
 },{}],3:[function(require,module,exports){
+"use strict";
+
+var _index = require("../index"); // import { getLocationReviews } from './firebase-functions.js';
+
+
+let hasReviewPermissions = false;
+let currBuildingId = 0;
+let currentUserID;
+let buildingList;
+const navElements = document.querySelectorAll('.private');
+
+_index.auth.onAuthStateChanged(user => {
+  if (user) {
+    currentUserID = user.uid;
+    console.log('user good');
+    console.log(user.uid);
+    hasReviewPermissions = true; // const authBtn = document.getElementsByClassName('auth-btn');
+
+    const authBtn = document.querySelector('.auth-btn');
+    authBtn.innerHTML = 'Logout';
+    authBtn.setAttribute('onclick', 'signUserOut()');
+    authBtn.setAttribute('href', '#');
+    authBtn.style.cursor = 'pointer';
+  } else {
+    console.log('user bad');
+    hasReviewPermissions = false;
+    const authBtn = document.querySelector('.auth-btn');
+    authBtn.innerHTML = 'Sign In';
+    authBtn.setAttribute('href', 'auth.html');
+    authBtn.removeAttribute('onclick');
+
+    for (let i = 0; i < navElements.length; i++) {
+      navElements[i].setAttribute('href', 'auth.html');
+    }
+  }
+});
+
+async function initMap() {
+  var options = {
+    zoom: 16,
+    center: {
+      lat: 43.4723,
+      lng: -80.5449
+    }
+  };
+  var map = new google.maps.Map(document.getElementById('map'), options); // Add markers for location 
+
+  buildingList = await (0, _index.getAllLocations)();
+
+  for (let i = 0; i < buildingList.length; i++) {
+    addMarker(buildingList[i]);
+  }
+
+  function addMarker(info) {
+    var marker = new google.maps.Marker({
+      position: {
+        lat: info.latitude,
+        lng: info.longitude
+      },
+      map: map
+    });
+    var sampleinfo = new google.maps.InfoWindow({
+      content: '<h1>' + info.address + '</h1>'
+    });
+    marker.addListener('click', async function () {
+      currBuildingId = info.id;
+      document.getElementById("address").innerHTML = info.address;
+      document.getElementById("address2").innerHTML = info.address; //console.log(document.getElementById("adress").innerHTML)
+
+      var imgTags = document.getElementsByClassName("mySlides");
+      console.log(info.imageURLs);
+
+      if (info.imageURLs.length == 0) {
+        document.querySelector('.carousel').style.display = 'none';
+      } else {
+        document.querySelector('.carousel').style.display = 'block';
+        console.log(document.querySelector('.carousel').style.display);
+
+        for (var i = 0; i < Math.min(10, info.imageURLs.length); i++) {
+          imgTags[i].setAttribute("src", info.imageURLs[i]);
+          console.log(info.imageURLs[i]);
+        }
+      }
+
+      showDivs(1); // document.querySelector('.carousel').style.display = 'none';
+
+      star_rating_animation(info.rating);
+      price_animation(info.price);
+      document.getElementById("description-info").innerHTML = info.description;
+      document.getElementById("num-recommendations").innerHTML = info.recommendedCount;
+      document.getElementsByClassName("comment-section")[0].innerHTML = ''; // old_comments = document.getElementsByClassName("comment");
+      // console.log(document.getElementsByClassName("comment"))
+      // for (var i = 0; ; i++) {
+      //     if (old_comments[i]) {
+      //         old_comments[i].remove();
+      //     } else {
+      //         break;
+      //     }
+      // }
+      // console.log(document.getElementsByClassName("comment"))
+
+      const locationReviews = await (0, _index.getLocationReviews)(info.id);
+
+      for (var i = 0; i < info.reviewIDs.length; i++) {
+        var stars = "";
+
+        for (var j = 0; j < 5; j++) {
+          if (j + 1 <= locationReviews[i].rating) {
+            stars += '<i class="fas fa-star comment-star"></i>';
+          } else {
+            stars += '<i class="far fa-star comment-star"></i>';
+          }
+        }
+
+        var new_comment = document.createElement("div");
+        new_comment.setAttribute('class', 'comment');
+        console.log(locationReviews[i].userID);
+        var userName = "Undefined";
+
+        if (await (0, _index.getUserByID)(locationReviews[i].userID)) {
+          userName = (await (0, _index.getUserByID)(locationReviews[i].userID)).firstName;
+        }
+
+        new_comment.innerHTML = '<span class="commentor">' + userName + '</span> | <span class="comment-date">' + locationReviews[i].timestamp.toDate().toDateString() + '<br>' + stars + '<br><h3 class="comment-title">' + locationReviews[i].title + '</h3> <p class="comment-body">' + locationReviews[i].description + '</p>';
+        var commentStars = document.getElementsByClassName('comment-star');
+        document.getElementsByClassName("comment-section")[0].appendChild(new_comment);
+      }
+
+      map.setCenter({
+        lat: marker.getPosition().lat(),
+        lng: marker.getPosition().lng()
+      }); //sampleinfo.open(map, marker);
+
+      document.getElementById("map").style.width = "70%";
+      document.getElementById("info-bar").style.display = "flex";
+      document.getElementById("info-bar").style.width = "30%";
+      document.getElementById("info-bar").style.opacity = "100%";
+      document.getElementById("info-bar").style.zIndex = "2";
+      document.getElementById("review-page").style.width = "30%";
+      document.getElementById("review-page").style.display = "flex";
+    });
+  }
+}
+
+window.initMap = initMap;
+
+function resetbar() {
+  document.getElementById("map").style.width = "100%";
+  document.getElementById("info-bar").style.display = "none";
+  document.getElementById("info-bar").style.width = "0%";
+  document.getElementById("review-page").style.display = "none";
+  document.getElementById("review-page").style.width = "0%";
+}
+
+window.resetbar = resetbar;
+var slideIndex = 1; // showDivs(slideIndex);
+
+function plusDivs(n) {
+  showDivs(slideIndex += n);
+}
+
+window.plusDivs = plusDivs;
+
+async function showDivs(n) {
+  var locationInfo = await (0, _index.getLocationByID)(currBuildingId);
+  var i;
+  var x = document.getElementsByClassName("mySlides");
+
+  if (n > locationInfo.imageURLs.length) {
+    slideIndex = 1;
+  }
+
+  if (n < 1) {
+    slideIndex = locationInfo.imageURLs.length;
+  }
+
+  ;
+
+  for (i = 0; i < 10; i++) {
+    x[i].style.opacity = "0";
+    x[i].style.display = "none";
+  }
+
+  x[slideIndex - 1].style.opacity = "100";
+  x[slideIndex - 1].style.display = "block";
+}
+
+window.showDivs = showDivs;
+
+function star_rating_animation(rating) {
+  document.getElementById("numrating").innerHTML = "" + Math.round(rating * 10) / 10;
+  rating = Math.round(rating * 2) / 2;
+
+  for (var i = 1; i < 6; i++) {
+    document.getElementById("star" + i).setAttribute('class', 'far fa-star');
+  }
+
+  if (rating >= 0.5) {
+    document.getElementById("star1").setAttribute('class', 'fas fa-star-half-alt');
+  }
+
+  if (rating >= 1) {
+    document.getElementById("star1").setAttribute('class', 'fas fa-star');
+  }
+
+  if (rating >= 1.5) {
+    document.getElementById("star2").setAttribute('class', 'fas fa-star-half-alt');
+  }
+
+  if (rating >= 2) {
+    document.getElementById("star2").setAttribute('class', 'fas fa-star');
+  }
+
+  if (rating >= 2.5) {
+    document.getElementById("star3").setAttribute('class', 'fas fa-star-half-alt');
+  }
+
+  if (rating >= 3) {
+    document.getElementById("star3").setAttribute('class', 'fas fa-star');
+  }
+
+  if (rating >= 3.5) {
+    document.getElementById("star4").setAttribute('class', 'fas fa-star-half-alt');
+  }
+
+  if (rating >= 4) {
+    document.getElementById("star4").setAttribute('class', 'fas fa-star');
+  }
+
+  if (rating >= 4.5) {
+    document.getElementById("star5").setAttribute('class', 'fas fa-star-half-alt');
+  }
+
+  if (rating >= 5) {
+    document.getElementById("star5").setAttribute('class', 'fas fa-star');
+  }
+}
+
+function price_animation(price) {
+  document.getElementById("numprice").innerHTML = "$" + price;
+
+  for (var i = 1; i < 4; i++) {
+    document.getElementById("dollar" + i).style.display = "none";
+  }
+
+  document.getElementById("dollar1").style.display = "block";
+
+  if (price >= 500) {
+    document.getElementById("dollar2").style.display = "block";
+  }
+
+  if (price >= 1000) {
+    document.getElementById("dollar3").style.display = "block";
+  }
+}
+
+var userRating;
+var userRecommend;
+
+function addReview() {
+  if (hasReviewPermissions) {
+    document.getElementById("info-bar").style.opacity = '0';
+    setTimeout(() => {
+      document.getElementById("info-bar").style.zIndex = '-1';
+    }, 50);
+
+    for (var i = 1; i <= 5; i++) {
+      document.getElementById("review-star" + i).setAttribute('class', 'far fa-star');
+    }
+
+    userRating = 0;
+    userRecommend = false;
+  } else {
+    window.location.replace('auth.html');
+  } // const review = {
+  //     description: "testing",
+  //     id: "testingid",
+  //     title: "placeholder",
+  //     reviewerID: "abc",
+  // };
+  // createReview('7TahmGCGceaQYEAx1Mgm', review);
+
+}
+
+window.addReview = addReview;
+
+function reviewStarsClick(starNum) {
+  for (var i = 1; i <= 5; i++) {
+    if (i <= starNum) {
+      document.getElementById("review-star" + i).setAttribute('class', 'fas fa-star');
+    } else {
+      document.getElementById("review-star" + i).setAttribute('class', 'far fa-star');
+    }
+  }
+
+  userRating = starNum;
+}
+
+window.reviewStarsClick = reviewStarsClick;
+
+function reviewRecommendClick(recommend) {
+  if (recommend) {
+    document.getElementById("review-thumbs-up").setAttribute('class', 'fas fa-thumbs-up');
+    document.getElementById("review-thumbs-down").setAttribute('class', 'far fa-thumbs-down');
+    userRecommend = true;
+  } else {
+    document.getElementById("review-thumbs-up").setAttribute('class', 'far fa-thumbs-up');
+    document.getElementById("review-thumbs-down").setAttribute('class', 'fas fa-thumbs-down');
+    userRecommend = false;
+  }
+}
+
+window.reviewRecommendClick = reviewRecommendClick;
+
+function click(x, y) {
+  var ev = new MouseEvent('click', {
+    'view': window,
+    'bubbles': true,
+    'cancelable': true,
+    'screenX': x,
+    'screenY': y
+  });
+  var el = document.elementFromPoint(x, y);
+  el.dispatchEvent(ev);
+}
+
+async function reviewSubmit() {
+  let centerX = document.getElementById("map").offsetLeft + document.getElementById("map").offsetWidth / 2;
+  let centerY = document.getElementById("map").offsetTop + document.getElementById("map").offsetHeight / 2;
+  console.log(centerX);
+  console.log(centerY); // click(centerX, centerY);
+
+  var new_comment = {
+    userID: currentUserID,
+    // change this
+    timestamp: (0, _index.getServerTimestamp)(),
+    rating: userRating,
+    recommended: userRecommend,
+    title: document.getElementById('review-title').value,
+    description: document.getElementById('review-description').value
+  };
+  var locationInfo = await (0, _index.getLocationByID)(currBuildingId);
+  var newRating = (locationInfo.rating * locationInfo.reviewIDs.length + userRating) / (locationInfo.reviewIDs.length + 1);
+  var newRecommend = locationInfo.recommendedCount;
+
+  if (userRecommend) {
+    newRecommend += 1;
+  }
+
+  (0, _index.updateLocationRating)(currBuildingId, newRating, newRecommend);
+  console.log(new_comment);
+  (0, _index.createReview)(currBuildingId, new_comment).then(_ => {
+    console.log('DONE!');
+    location.reload();
+  }); //
+  // buildingInfo[currBuildingId].comments.unshift(new_comment);
+  // conmouseleave.log(buildingInfo)
+}
+
+window.reviewSubmit = reviewSubmit;
+
+function signUserOut() {
+  (0, _index.signOut)();
+  window.location.reload();
+}
+
+window.signUserOut = signUserOut; // document.getElementById('map').addEventListener('click', (event) => {
+//     console.log(event.clientX, event.clientY)
+// })
+// window.mouse_position = mouse_position
+
+},{"../index":1}],4:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -675,7 +1099,7 @@ registerCoreComponents();
 var _default = firebase;
 exports.default = _default;
 
-},{"@firebase/app":4,"@firebase/component":5,"@firebase/logger":8,"@firebase/util":11}],4:[function(require,module,exports){
+},{"@firebase/app":5,"@firebase/component":9,"@firebase/logger":12,"@firebase/util":15}],5:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1382,7 +1806,14503 @@ function registerCoreComponents(variant) {
 
 registerCoreComponents();
 
-},{"@firebase/component":5,"@firebase/logger":8,"@firebase/util":11}],5:[function(require,module,exports){
+},{"@firebase/component":9,"@firebase/logger":12,"@firebase/util":15}],6:[function(require,module,exports){
+(function (global){(function (){
+"use strict";
+
+var _appCompat = _interopRequireDefault(require("@firebase/app-compat"));
+
+var exp = _interopRequireWildcard(require("@firebase/auth/internal"));
+
+var _component = require("@firebase/component");
+
+var _util = require("@firebase/util");
+
+function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "function") return null; var cacheBabelInterop = new WeakMap(); var cacheNodeInterop = new WeakMap(); return (_getRequireWildcardCache = function (nodeInterop) { return nodeInterop ? cacheNodeInterop : cacheBabelInterop; })(nodeInterop); }
+
+function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(nodeInterop); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var name = "@firebase/auth-compat";
+var version = "0.1.2";
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+const CORDOVA_ONDEVICEREADY_TIMEOUT_MS = 1000;
+
+function _getCurrentScheme() {
+  var _a;
+
+  return ((_a = self === null || self === void 0 ? void 0 : self.location) === null || _a === void 0 ? void 0 : _a.protocol) || null;
+}
+/**
+ * @return {boolean} Whether the current environment is http or https.
+ */
+
+
+function _isHttpOrHttps() {
+  return _getCurrentScheme() === 'http:' || _getCurrentScheme() === 'https:';
+}
+/**
+ * @param {?string=} ua The user agent.
+ * @return {boolean} Whether the app is rendered in a mobile iOS or Android
+ *     Cordova environment.
+ */
+
+
+function _isAndroidOrIosCordovaScheme(ua = (0, _util.getUA)()) {
+  return !!((_getCurrentScheme() === 'file:' || _getCurrentScheme() === 'ionic:') && ua.toLowerCase().match(/iphone|ipad|ipod|android/));
+}
+/**
+ * @return {boolean} Whether the environment is a native environment, where
+ *     CORS checks do not apply.
+ */
+
+
+function _isNativeEnvironment() {
+  return (0, _util.isReactNative)() || (0, _util.isNode)();
+}
+/**
+ * Checks whether the user agent is IE11.
+ * @return {boolean} True if it is IE11.
+ */
+
+
+function _isIe11() {
+  return (0, _util.isIE)() && (document === null || document === void 0 ? void 0 : document.documentMode) === 11;
+}
+/**
+ * Checks whether the user agent is Edge.
+ * @param {string} userAgent The browser user agent string.
+ * @return {boolean} True if it is Edge.
+ */
+
+
+function _isEdge(ua = (0, _util.getUA)()) {
+  return /Edge\/\d+/.test(ua);
+}
+/**
+ * @param {?string=} opt_userAgent The navigator user agent.
+ * @return {boolean} Whether local storage is not synchronized between an iframe
+ *     and a popup of the same domain.
+ */
+
+
+function _isLocalStorageNotSynchronized(ua = (0, _util.getUA)()) {
+  return _isIe11() || _isEdge(ua);
+}
+/** @return {boolean} Whether web storage is supported. */
+
+
+function _isWebStorageSupported() {
+  try {
+    const storage = self.localStorage;
+
+    const key = exp._generateEventId();
+
+    if (storage) {
+      // setItem will throw an exception if we cannot access WebStorage (e.g.,
+      // Safari in private mode).
+      storage['setItem'](key, '1');
+      storage['removeItem'](key); // For browsers where iframe web storage does not synchronize with a popup
+      // of the same domain, indexedDB is used for persistent storage. These
+      // browsers include IE11 and Edge.
+      // Make sure it is supported (IE11 and Edge private mode does not support
+      // that).
+
+      if (_isLocalStorageNotSynchronized()) {
+        // In such browsers, if indexedDB is not supported, an iframe cannot be
+        // notified of the popup sign in result.
+        return (0, _util.isIndexedDBAvailable)();
+      }
+
+      return true;
+    }
+  } catch (e) {
+    // localStorage is not available from a worker. Test availability of
+    // indexedDB.
+    return _isWorker() && (0, _util.isIndexedDBAvailable)();
+  }
+
+  return false;
+}
+/**
+ * @param {?Object=} global The optional global scope.
+ * @return {boolean} Whether current environment is a worker.
+ */
+
+
+function _isWorker() {
+  // WorkerGlobalScope only defined in worker environment.
+  return typeof global !== 'undefined' && 'WorkerGlobalScope' in global && 'importScripts' in global;
+}
+
+function _isPopupRedirectSupported() {
+  return (_isHttpOrHttps() || (0, _util.isBrowserExtension)() || _isAndroidOrIosCordovaScheme()) && // React Native with remote debugging reports its location.protocol as
+  // http.
+  !_isNativeEnvironment() && // Local storage has to be supported for browser popup and redirect
+  // operations to work.
+  _isWebStorageSupported() && // DOM, popups and redirects are not supported within a worker.
+  !_isWorker();
+}
+/** Quick check that indicates the platform *may* be Cordova */
+
+
+function _isLikelyCordova() {
+  return _isAndroidOrIosCordovaScheme() && typeof document !== 'undefined';
+}
+
+async function _isCordova() {
+  if (!_isLikelyCordova()) {
+    return false;
+  }
+
+  return new Promise(resolve => {
+    const timeoutId = setTimeout(() => {
+      // We've waited long enough; the telltale Cordova event didn't happen
+      resolve(false);
+    }, CORDOVA_ONDEVICEREADY_TIMEOUT_MS);
+    document.addEventListener('deviceready', () => {
+      clearTimeout(timeoutId);
+      resolve(true);
+    });
+  });
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+const Persistence = {
+  LOCAL: 'local',
+  NONE: 'none',
+  SESSION: 'session'
+};
+const _assert$3 = exp._assert;
+const PERSISTENCE_KEY = 'persistence';
+/**
+ * Validates that an argument is a valid persistence value. If an invalid type
+ * is specified, an error is thrown synchronously.
+ */
+
+function _validatePersistenceArgument(auth, persistence) {
+  _assert$3(Object.values(Persistence).includes(persistence), auth, "invalid-persistence-type"
+  /* INVALID_PERSISTENCE */
+  ); // Validate if the specified type is supported in the current environment.
+
+
+  if ((0, _util.isReactNative)()) {
+    // This is only supported in a browser.
+    _assert$3(persistence !== Persistence.SESSION, auth, "unsupported-persistence-type"
+    /* UNSUPPORTED_PERSISTENCE */
+    );
+
+    return;
+  }
+
+  if ((0, _util.isNode)()) {
+    // Only none is supported in Node.js.
+    _assert$3(persistence === Persistence.NONE, auth, "unsupported-persistence-type"
+    /* UNSUPPORTED_PERSISTENCE */
+    );
+
+    return;
+  }
+
+  if (_isWorker()) {
+    // In a worker environment, either LOCAL or NONE are supported.
+    // If indexedDB not supported and LOCAL provided, throw an error
+    _assert$3(persistence === Persistence.NONE || persistence === Persistence.LOCAL && (0, _util.isIndexedDBAvailable)(), auth, "unsupported-persistence-type"
+    /* UNSUPPORTED_PERSISTENCE */
+    );
+
+    return;
+  } // This is restricted by what the browser supports.
+
+
+  _assert$3(persistence === Persistence.NONE || _isWebStorageSupported(), auth, "unsupported-persistence-type"
+  /* UNSUPPORTED_PERSISTENCE */
+  );
+}
+
+async function _savePersistenceForRedirect(auth) {
+  await auth._initializationPromise;
+  const win = getSelfWindow();
+
+  const key = exp._persistenceKeyName(PERSISTENCE_KEY, auth.config.apiKey, auth.name);
+
+  if (win === null || win === void 0 ? void 0 : win.sessionStorage) {
+    win.sessionStorage.setItem(key, auth._getPersistence());
+  }
+}
+
+function _getPersistencesFromRedirect(apiKey, appName) {
+  const win = getSelfWindow();
+
+  if (!(win === null || win === void 0 ? void 0 : win.sessionStorage)) {
+    return [];
+  }
+
+  const key = exp._persistenceKeyName(PERSISTENCE_KEY, apiKey, appName);
+
+  const persistence = win.sessionStorage.getItem(key);
+
+  switch (persistence) {
+    case Persistence.NONE:
+      return [exp.inMemoryPersistence];
+
+    case Persistence.LOCAL:
+      return [exp.indexedDBLocalPersistence, exp.browserSessionPersistence];
+
+    case Persistence.SESSION:
+      return [exp.browserSessionPersistence];
+
+    default:
+      return [];
+  }
+}
+
+function getSelfWindow() {
+  return typeof window !== 'undefined' ? window : null;
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+const _assert$2 = exp._assert;
+/** Platform-agnostic popup-redirect resolver */
+
+class CompatPopupRedirectResolver {
+  constructor() {
+    // Create both resolvers for dynamic resolution later
+    this.browserResolver = exp._getInstance(exp.browserPopupRedirectResolver);
+    this.cordovaResolver = exp._getInstance(exp.cordovaPopupRedirectResolver); // The actual resolver in use: either browserResolver or cordovaResolver.
+
+    this.underlyingResolver = null;
+    this._redirectPersistence = exp.browserSessionPersistence;
+    this._completeRedirectFn = exp._getRedirectResult;
+  }
+
+  async _initialize(auth) {
+    await this.selectUnderlyingResolver();
+    return this.assertedUnderlyingResolver._initialize(auth);
+  }
+
+  async _openPopup(auth, provider, authType, eventId) {
+    await this.selectUnderlyingResolver();
+    return this.assertedUnderlyingResolver._openPopup(auth, provider, authType, eventId);
+  }
+
+  async _openRedirect(auth, provider, authType, eventId) {
+    await this.selectUnderlyingResolver();
+    return this.assertedUnderlyingResolver._openRedirect(auth, provider, authType, eventId);
+  }
+
+  _isIframeWebStorageSupported(auth, cb) {
+    this.assertedUnderlyingResolver._isIframeWebStorageSupported(auth, cb);
+  }
+
+  _originValidation(auth) {
+    return this.assertedUnderlyingResolver._originValidation(auth);
+  }
+
+  get _shouldInitProactively() {
+    return _isLikelyCordova() || this.browserResolver._shouldInitProactively;
+  }
+
+  get assertedUnderlyingResolver() {
+    _assert$2(this.underlyingResolver, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    return this.underlyingResolver;
+  }
+
+  async selectUnderlyingResolver() {
+    if (this.underlyingResolver) {
+      return;
+    } // We haven't yet determined whether or not we're in Cordova; go ahead
+    // and determine that state now.
+
+
+    const isCordova = await _isCordova();
+    this.underlyingResolver = isCordova ? this.cordovaResolver : this.browserResolver;
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+function unwrap(object) {
+  return object.unwrap();
+}
+
+function wrapped(object) {
+  return object.wrapped();
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+function credentialFromResponse(userCredential) {
+  return credentialFromObject(userCredential);
+}
+
+function attachExtraErrorFields(auth, e) {
+  var _a; // The response contains all fields from the server which may or may not
+  // actually match the underlying type
+
+
+  const response = (_a = e.customData) === null || _a === void 0 ? void 0 : _a._tokenResponse;
+
+  if (e.code === 'auth/multi-factor-auth-required') {
+    const mfaErr = e;
+    mfaErr.resolver = new MultiFactorResolver(auth, exp.getMultiFactorResolver(auth, e));
+  } else if (response) {
+    const credential = credentialFromObject(e);
+    const credErr = e;
+
+    if (credential) {
+      credErr.credential = credential;
+      credErr.tenantId = response.tenantId || undefined;
+      credErr.email = response.email || undefined;
+      credErr.phoneNumber = response.phoneNumber || undefined;
+    }
+  }
+}
+
+function credentialFromObject(object) {
+  const {
+    _tokenResponse
+  } = object instanceof _util.FirebaseError ? object.customData : object;
+
+  if (!_tokenResponse) {
+    return null;
+  } // Handle phone Auth credential responses, as they have a different format
+  // from other backend responses (i.e. no providerId). This is also only the
+  // case for user credentials (does not work for errors).
+
+
+  if (!(object instanceof _util.FirebaseError)) {
+    if ('temporaryProof' in _tokenResponse && 'phoneNumber' in _tokenResponse) {
+      return exp.PhoneAuthProvider.credentialFromResult(object);
+    }
+  }
+
+  const providerId = _tokenResponse.providerId; // Email and password is not supported as there is no situation where the
+  // server would return the password to the client.
+
+  if (!providerId || providerId === exp.ProviderId.PASSWORD) {
+    return null;
+  }
+
+  let provider;
+
+  switch (providerId) {
+    case exp.ProviderId.GOOGLE:
+      provider = exp.GoogleAuthProvider;
+      break;
+
+    case exp.ProviderId.FACEBOOK:
+      provider = exp.FacebookAuthProvider;
+      break;
+
+    case exp.ProviderId.GITHUB:
+      provider = exp.GithubAuthProvider;
+      break;
+
+    case exp.ProviderId.TWITTER:
+      provider = exp.TwitterAuthProvider;
+      break;
+
+    default:
+      const {
+        oauthIdToken,
+        oauthAccessToken,
+        oauthTokenSecret,
+        pendingToken,
+        nonce
+      } = _tokenResponse;
+
+      if (!oauthAccessToken && !oauthTokenSecret && !oauthIdToken && !pendingToken) {
+        return null;
+      } // TODO(avolkovi): uncomment this and get it working with SAML & OIDC
+
+
+      if (pendingToken) {
+        if (providerId.startsWith('saml.')) {
+          return exp.SAMLAuthCredential._create(providerId, pendingToken);
+        } else {
+          // OIDC and non-default providers excluding Twitter.
+          return exp.OAuthCredential._fromParams({
+            providerId,
+            signInMethod: providerId,
+            pendingToken,
+            idToken: oauthIdToken,
+            accessToken: oauthAccessToken
+          });
+        }
+      }
+
+      return new exp.OAuthProvider(providerId).credential({
+        idToken: oauthIdToken,
+        accessToken: oauthAccessToken,
+        rawNonce: nonce
+      });
+  }
+
+  return object instanceof _util.FirebaseError ? provider.credentialFromError(object) : provider.credentialFromResult(object);
+}
+
+async function convertCredential(auth, credentialPromise) {
+  let credential;
+
+  try {
+    credential = await credentialPromise;
+  } catch (e) {
+    if (e instanceof _util.FirebaseError) {
+      attachExtraErrorFields(auth, e);
+    }
+
+    throw e;
+  }
+
+  const {
+    operationType,
+    user
+  } = credential;
+  return {
+    operationType,
+    credential: credentialFromResponse(credential),
+    additionalUserInfo: exp.getAdditionalUserInfo(credential),
+    user: User.getOrCreate(user)
+  };
+}
+
+async function convertConfirmationResult(auth, confirmationResultPromise) {
+  const confirmationResultExp = await confirmationResultPromise;
+  return {
+    verificationId: confirmationResultExp.verificationId,
+    confirm: verificationCode => convertCredential(auth, confirmationResultExp.confirm(verificationCode))
+  };
+}
+
+class MultiFactorResolver {
+  constructor(auth, resolver) {
+    this.resolver = resolver;
+    this.auth = wrapped(auth);
+  }
+
+  get session() {
+    return this.resolver.session;
+  }
+
+  get hints() {
+    return this.resolver.hints;
+  }
+
+  resolveSignIn(assertion) {
+    return convertCredential(unwrap(this.auth), this.resolver.resolveSignIn(assertion));
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+class User {
+  constructor(_delegate) {
+    this._delegate = _delegate;
+    this.multiFactor = exp.multiFactor(_delegate);
+  }
+
+  static getOrCreate(user) {
+    if (!User.USER_MAP.has(user)) {
+      User.USER_MAP.set(user, new User(user));
+    }
+
+    return User.USER_MAP.get(user);
+  }
+
+  delete() {
+    return this._delegate.delete();
+  }
+
+  reload() {
+    return this._delegate.reload();
+  }
+
+  toJSON() {
+    return this._delegate.toJSON();
+  }
+
+  getIdTokenResult(forceRefresh) {
+    return this._delegate.getIdTokenResult(forceRefresh);
+  }
+
+  getIdToken(forceRefresh) {
+    return this._delegate.getIdToken(forceRefresh);
+  }
+
+  linkAndRetrieveDataWithCredential(credential) {
+    return this.linkWithCredential(credential);
+  }
+
+  async linkWithCredential(credential) {
+    return convertCredential(this.auth, exp.linkWithCredential(this._delegate, credential));
+  }
+
+  async linkWithPhoneNumber(phoneNumber, applicationVerifier) {
+    return convertConfirmationResult(this.auth, exp.linkWithPhoneNumber(this._delegate, phoneNumber, applicationVerifier));
+  }
+
+  async linkWithPopup(provider) {
+    return convertCredential(this.auth, exp.linkWithPopup(this._delegate, provider, CompatPopupRedirectResolver));
+  }
+
+  async linkWithRedirect(provider) {
+    await _savePersistenceForRedirect(exp._castAuth(this.auth));
+    return exp.linkWithRedirect(this._delegate, provider, CompatPopupRedirectResolver);
+  }
+
+  reauthenticateAndRetrieveDataWithCredential(credential) {
+    return this.reauthenticateWithCredential(credential);
+  }
+
+  async reauthenticateWithCredential(credential) {
+    return convertCredential(this.auth, exp.reauthenticateWithCredential(this._delegate, credential));
+  }
+
+  reauthenticateWithPhoneNumber(phoneNumber, applicationVerifier) {
+    return convertConfirmationResult(this.auth, exp.reauthenticateWithPhoneNumber(this._delegate, phoneNumber, applicationVerifier));
+  }
+
+  reauthenticateWithPopup(provider) {
+    return convertCredential(this.auth, exp.reauthenticateWithPopup(this._delegate, provider, CompatPopupRedirectResolver));
+  }
+
+  async reauthenticateWithRedirect(provider) {
+    await _savePersistenceForRedirect(exp._castAuth(this.auth));
+    return exp.reauthenticateWithRedirect(this._delegate, provider, CompatPopupRedirectResolver);
+  }
+
+  sendEmailVerification(actionCodeSettings) {
+    return exp.sendEmailVerification(this._delegate, actionCodeSettings);
+  }
+
+  async unlink(providerId) {
+    await exp.unlink(this._delegate, providerId);
+    return this;
+  }
+
+  updateEmail(newEmail) {
+    return exp.updateEmail(this._delegate, newEmail);
+  }
+
+  updatePassword(newPassword) {
+    return exp.updatePassword(this._delegate, newPassword);
+  }
+
+  updatePhoneNumber(phoneCredential) {
+    return exp.updatePhoneNumber(this._delegate, phoneCredential);
+  }
+
+  updateProfile(profile) {
+    return exp.updateProfile(this._delegate, profile);
+  }
+
+  verifyBeforeUpdateEmail(newEmail, actionCodeSettings) {
+    return exp.verifyBeforeUpdateEmail(this._delegate, newEmail, actionCodeSettings);
+  }
+
+  get emailVerified() {
+    return this._delegate.emailVerified;
+  }
+
+  get isAnonymous() {
+    return this._delegate.isAnonymous;
+  }
+
+  get metadata() {
+    return this._delegate.metadata;
+  }
+
+  get phoneNumber() {
+    return this._delegate.phoneNumber;
+  }
+
+  get providerData() {
+    return this._delegate.providerData;
+  }
+
+  get refreshToken() {
+    return this._delegate.refreshToken;
+  }
+
+  get tenantId() {
+    return this._delegate.tenantId;
+  }
+
+  get displayName() {
+    return this._delegate.displayName;
+  }
+
+  get email() {
+    return this._delegate.email;
+  }
+
+  get photoURL() {
+    return this._delegate.photoURL;
+  }
+
+  get providerId() {
+    return this._delegate.providerId;
+  }
+
+  get uid() {
+    return this._delegate.uid;
+  }
+
+  get auth() {
+    return this._delegate.auth;
+  }
+
+} // Maintain a map so that there's always a 1:1 mapping between new User and
+// legacy compat users
+
+
+User.USER_MAP = new WeakMap();
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+const _assert$1 = exp._assert;
+
+class Auth {
+  constructor(app, provider) {
+    this.app = app;
+
+    if (provider.isInitialized()) {
+      this._delegate = provider.getImmediate();
+      this.linkUnderlyingAuth();
+      return;
+    }
+
+    const {
+      apiKey
+    } = app.options; // TODO: platform needs to be determined using heuristics
+
+    _assert$1(apiKey, "invalid-api-key"
+    /* INVALID_API_KEY */
+    , {
+      appName: app.name
+    });
+
+    let persistences = [exp.inMemoryPersistence]; // Only deal with persistences in web environments
+
+    if (typeof window !== 'undefined') {
+      // Note this is slightly different behavior: in this case, the stored
+      // persistence is checked *first* rather than last. This is because we want
+      // to prefer stored persistence type in the hierarchy.
+      persistences = _getPersistencesFromRedirect(apiKey, app.name);
+
+      for (const persistence of [exp.indexedDBLocalPersistence, exp.browserLocalPersistence, exp.browserSessionPersistence]) {
+        if (!persistences.includes(persistence)) {
+          persistences.push(persistence);
+        }
+      }
+    } // TODO: platform needs to be determined using heuristics
+
+
+    _assert$1(apiKey, "invalid-api-key"
+    /* INVALID_API_KEY */
+    , {
+      appName: app.name
+    }); // Only use a popup/redirect resolver in browser environments
+
+
+    const resolver = typeof window !== 'undefined' ? CompatPopupRedirectResolver : undefined;
+    this._delegate = provider.initialize({
+      options: {
+        persistence: persistences,
+        popupRedirectResolver: resolver
+      }
+    });
+
+    this._delegate._updateErrorMap(exp.debugErrorMap);
+
+    this.linkUnderlyingAuth();
+  }
+
+  get emulatorConfig() {
+    return this._delegate.emulatorConfig;
+  }
+
+  get currentUser() {
+    if (!this._delegate.currentUser) {
+      return null;
+    }
+
+    return User.getOrCreate(this._delegate.currentUser);
+  }
+
+  get languageCode() {
+    return this._delegate.languageCode;
+  }
+
+  set languageCode(languageCode) {
+    this._delegate.languageCode = languageCode;
+  }
+
+  get settings() {
+    return this._delegate.settings;
+  }
+
+  get tenantId() {
+    return this._delegate.tenantId;
+  }
+
+  set tenantId(tid) {
+    this._delegate.tenantId = tid;
+  }
+
+  useDeviceLanguage() {
+    this._delegate.useDeviceLanguage();
+  }
+
+  signOut() {
+    return this._delegate.signOut();
+  }
+
+  useEmulator(url, options) {
+    exp.connectAuthEmulator(this._delegate, url, options);
+  }
+
+  applyActionCode(code) {
+    return exp.applyActionCode(this._delegate, code);
+  }
+
+  checkActionCode(code) {
+    return exp.checkActionCode(this._delegate, code);
+  }
+
+  confirmPasswordReset(code, newPassword) {
+    return exp.confirmPasswordReset(this._delegate, code, newPassword);
+  }
+
+  async createUserWithEmailAndPassword(email, password) {
+    return convertCredential(this._delegate, exp.createUserWithEmailAndPassword(this._delegate, email, password));
+  }
+
+  fetchProvidersForEmail(email) {
+    return this.fetchSignInMethodsForEmail(email);
+  }
+
+  fetchSignInMethodsForEmail(email) {
+    return exp.fetchSignInMethodsForEmail(this._delegate, email);
+  }
+
+  isSignInWithEmailLink(emailLink) {
+    return exp.isSignInWithEmailLink(this._delegate, emailLink);
+  }
+
+  async getRedirectResult() {
+    _assert$1(_isPopupRedirectSupported(), this._delegate, "operation-not-supported-in-this-environment"
+    /* OPERATION_NOT_SUPPORTED */
+    );
+
+    const credential = await exp.getRedirectResult(this._delegate, CompatPopupRedirectResolver);
+
+    if (!credential) {
+      return {
+        credential: null,
+        user: null
+      };
+    }
+
+    return convertCredential(this._delegate, Promise.resolve(credential));
+  } // This function should only be called by frameworks (e.g. FirebaseUI-web) to log their usage.
+  // It is not intended for direct use by developer apps. NO jsdoc here to intentionally leave it
+  // out of autogenerated documentation pages to reduce accidental misuse.
+
+
+  addFrameworkForLogging(framework) {
+    exp.addFrameworkForLogging(this._delegate, framework);
+  }
+
+  onAuthStateChanged(nextOrObserver, errorFn, completed) {
+    const {
+      next,
+      error,
+      complete
+    } = wrapObservers(nextOrObserver, errorFn, completed);
+    return this._delegate.onAuthStateChanged(next, error, complete);
+  }
+
+  onIdTokenChanged(nextOrObserver, errorFn, completed) {
+    const {
+      next,
+      error,
+      complete
+    } = wrapObservers(nextOrObserver, errorFn, completed);
+    return this._delegate.onIdTokenChanged(next, error, complete);
+  }
+
+  sendSignInLinkToEmail(email, actionCodeSettings) {
+    return exp.sendSignInLinkToEmail(this._delegate, email, actionCodeSettings);
+  }
+
+  sendPasswordResetEmail(email, actionCodeSettings) {
+    return exp.sendPasswordResetEmail(this._delegate, email, actionCodeSettings || undefined);
+  }
+
+  async setPersistence(persistence) {
+    _validatePersistenceArgument(this._delegate, persistence);
+
+    let converted;
+
+    switch (persistence) {
+      case Persistence.SESSION:
+        converted = exp.browserSessionPersistence;
+        break;
+
+      case Persistence.LOCAL:
+        // Not using isIndexedDBAvailable() since it only checks if indexedDB is defined.
+        const isIndexedDBFullySupported = await exp._getInstance(exp.indexedDBLocalPersistence)._isAvailable();
+        converted = isIndexedDBFullySupported ? exp.indexedDBLocalPersistence : exp.browserLocalPersistence;
+        break;
+
+      case Persistence.NONE:
+        converted = exp.inMemoryPersistence;
+        break;
+
+      default:
+        return exp._fail("argument-error"
+        /* ARGUMENT_ERROR */
+        , {
+          appName: this._delegate.name
+        });
+    }
+
+    return this._delegate.setPersistence(converted);
+  }
+
+  signInAndRetrieveDataWithCredential(credential) {
+    return this.signInWithCredential(credential);
+  }
+
+  signInAnonymously() {
+    return convertCredential(this._delegate, exp.signInAnonymously(this._delegate));
+  }
+
+  signInWithCredential(credential) {
+    return convertCredential(this._delegate, exp.signInWithCredential(this._delegate, credential));
+  }
+
+  signInWithCustomToken(token) {
+    return convertCredential(this._delegate, exp.signInWithCustomToken(this._delegate, token));
+  }
+
+  signInWithEmailAndPassword(email, password) {
+    return convertCredential(this._delegate, exp.signInWithEmailAndPassword(this._delegate, email, password));
+  }
+
+  signInWithEmailLink(email, emailLink) {
+    return convertCredential(this._delegate, exp.signInWithEmailLink(this._delegate, email, emailLink));
+  }
+
+  signInWithPhoneNumber(phoneNumber, applicationVerifier) {
+    return convertConfirmationResult(this._delegate, exp.signInWithPhoneNumber(this._delegate, phoneNumber, applicationVerifier));
+  }
+
+  async signInWithPopup(provider) {
+    _assert$1(_isPopupRedirectSupported(), this._delegate, "operation-not-supported-in-this-environment"
+    /* OPERATION_NOT_SUPPORTED */
+    );
+
+    return convertCredential(this._delegate, exp.signInWithPopup(this._delegate, provider, CompatPopupRedirectResolver));
+  }
+
+  async signInWithRedirect(provider) {
+    _assert$1(_isPopupRedirectSupported(), this._delegate, "operation-not-supported-in-this-environment"
+    /* OPERATION_NOT_SUPPORTED */
+    );
+
+    await _savePersistenceForRedirect(this._delegate);
+    return exp.signInWithRedirect(this._delegate, provider, CompatPopupRedirectResolver);
+  }
+
+  updateCurrentUser(user) {
+    // remove ts-ignore once overloads are defined for exp functions to accept compat objects
+    // @ts-ignore
+    return this._delegate.updateCurrentUser(user);
+  }
+
+  verifyPasswordResetCode(code) {
+    return exp.verifyPasswordResetCode(this._delegate, code);
+  }
+
+  unwrap() {
+    return this._delegate;
+  }
+
+  _delete() {
+    return this._delegate._delete();
+  }
+
+  linkUnderlyingAuth() {
+    this._delegate.wrapped = () => this;
+  }
+
+}
+
+Auth.Persistence = Persistence;
+
+function wrapObservers(nextOrObserver, error, complete) {
+  let next = nextOrObserver;
+
+  if (typeof nextOrObserver !== 'function') {
+    ({
+      next,
+      error,
+      complete
+    } = nextOrObserver);
+  } // We know 'next' is now a function
+
+
+  const oldNext = next;
+
+  const newNext = user => oldNext(user && User.getOrCreate(user));
+
+  return {
+    next: newNext,
+    error: error,
+    complete
+  };
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+class PhoneAuthProvider {
+  constructor() {
+    this.providerId = 'phone'; // TODO: remove ts-ignore when moving types from auth-types to auth-compat
+    // @ts-ignore
+
+    this._delegate = new exp.PhoneAuthProvider(unwrap(_appCompat.default.auth()));
+  }
+
+  static credential(verificationId, verificationCode) {
+    return exp.PhoneAuthProvider.credential(verificationId, verificationCode);
+  }
+
+  verifyPhoneNumber(phoneInfoOptions, applicationVerifier) {
+    return this._delegate.verifyPhoneNumber( // The implementation matches but the types are subtly incompatible
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    phoneInfoOptions, applicationVerifier);
+  }
+
+  unwrap() {
+    return this._delegate;
+  }
+
+}
+
+PhoneAuthProvider.PHONE_SIGN_IN_METHOD = exp.PhoneAuthProvider.PHONE_SIGN_IN_METHOD;
+PhoneAuthProvider.PROVIDER_ID = exp.PhoneAuthProvider.PROVIDER_ID;
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+const _assert = exp._assert;
+
+class RecaptchaVerifier {
+  constructor(container, parameters, app = _appCompat.default.app()) {
+    var _a; // API key is required for web client RPC calls.
+
+
+    _assert((_a = app.options) === null || _a === void 0 ? void 0 : _a.apiKey, "invalid-api-key"
+    /* INVALID_API_KEY */
+    , {
+      appName: app.name
+    });
+
+    this._delegate = new exp.RecaptchaVerifier(container, // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    parameters, // TODO: remove ts-ignore when moving types from auth-types to auth-compat
+    // @ts-ignore
+    app.auth());
+    this.type = this._delegate.type;
+  }
+
+  clear() {
+    this._delegate.clear();
+  }
+
+  render() {
+    return this._delegate.render();
+  }
+
+  verify() {
+    return this._delegate.verify();
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+const AUTH_TYPE = 'auth-compat'; // Create auth components to register with firebase.
+// Provides Auth public APIs.
+
+function registerAuthCompat(instance) {
+  instance.INTERNAL.registerComponent(new _component.Component(AUTH_TYPE, container => {
+    // getImmediate for FirebaseApp will always succeed
+    const app = container.getProvider('app-compat').getImmediate();
+    const authProvider = container.getProvider('auth');
+    return new Auth(app, authProvider);
+  }, "PUBLIC"
+  /* PUBLIC */
+  ).setServiceProps({
+    ActionCodeInfo: {
+      Operation: {
+        EMAIL_SIGNIN: exp.ActionCodeOperation.EMAIL_SIGNIN,
+        PASSWORD_RESET: exp.ActionCodeOperation.PASSWORD_RESET,
+        RECOVER_EMAIL: exp.ActionCodeOperation.RECOVER_EMAIL,
+        REVERT_SECOND_FACTOR_ADDITION: exp.ActionCodeOperation.REVERT_SECOND_FACTOR_ADDITION,
+        VERIFY_AND_CHANGE_EMAIL: exp.ActionCodeOperation.VERIFY_AND_CHANGE_EMAIL,
+        VERIFY_EMAIL: exp.ActionCodeOperation.VERIFY_EMAIL
+      }
+    },
+    EmailAuthProvider: exp.EmailAuthProvider,
+    FacebookAuthProvider: exp.FacebookAuthProvider,
+    GithubAuthProvider: exp.GithubAuthProvider,
+    GoogleAuthProvider: exp.GoogleAuthProvider,
+    OAuthProvider: exp.OAuthProvider,
+    //   SAMLAuthProvider,
+    PhoneAuthProvider: PhoneAuthProvider,
+    PhoneMultiFactorGenerator: exp.PhoneMultiFactorGenerator,
+    RecaptchaVerifier: RecaptchaVerifier,
+    TwitterAuthProvider: exp.TwitterAuthProvider,
+    Auth,
+    AuthCredential: exp.AuthCredential,
+    Error: _util.FirebaseError
+  }).setInstantiationMode("LAZY"
+  /* LAZY */
+  ).setMultipleInstances(false));
+  instance.registerVersion(name, version);
+}
+
+registerAuthCompat(_appCompat.default);
+
+}).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"@firebase/app-compat":4,"@firebase/auth/internal":8,"@firebase/component":9,"@firebase/util":15}],7:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.$ = sendPasswordResetEmail;
+exports.D = initializeAuth;
+exports.E = connectAuthEmulator;
+exports.W = signInAnonymously;
+exports.X = signInWithCredential;
+exports.Y = linkWithCredential;
+exports.Z = reauthenticateWithCredential;
+exports._ = signInWithCustomToken;
+exports.a0 = confirmPasswordReset;
+exports.a1 = applyActionCode;
+exports.a2 = checkActionCode;
+exports.a3 = verifyPasswordResetCode;
+exports.a4 = createUserWithEmailAndPassword;
+exports.a5 = signInWithEmailAndPassword;
+exports.a6 = sendSignInLinkToEmail;
+exports.a7 = isSignInWithEmailLink;
+exports.a8 = signInWithEmailLink;
+exports.a9 = fetchSignInMethodsForEmail;
+exports.aA = _getRedirectResult;
+exports.aB = _clearRedirectOutcomes;
+exports.aC = _castAuth;
+exports.aF = _getClientVersion;
+exports.aG = _generateEventId;
+exports.aa = sendEmailVerification;
+exports.ab = verifyBeforeUpdateEmail;
+exports.ad = parseActionCodeURL;
+exports.ae = updateProfile;
+exports.af = updateEmail;
+exports.ag = updatePassword;
+exports.ah = getIdToken;
+exports.ai = getIdTokenResult;
+exports.aj = unlink;
+exports.ak = getAdditionalUserInfo;
+exports.al = reload;
+exports.am = getMultiFactorResolver;
+exports.an = multiFactor;
+exports.ao = _isIOS7Or8;
+exports.ap = debugAssert;
+exports.aq = _isIOS;
+exports.ar = _isAndroid;
+exports.as = _fail;
+exports.at = _getRedirectUrl;
+exports.au = _getProjectConfig;
+exports.av = _createError;
+exports.aw = _assert;
+exports.ax = _getInstance;
+exports.ay = _persistenceKeyName;
+exports.c = signInWithPopup;
+exports.d = linkWithPopup;
+exports.e = reauthenticateWithPopup;
+exports.f = signInWithRedirect;
+exports.g = linkWithRedirect;
+exports.h = reauthenticateWithRedirect;
+exports.j = getRedirectResult;
+exports.l = linkWithPhoneNumber;
+exports.n = getAuth;
+exports.p = setPersistence;
+exports.q = onIdTokenChanged;
+exports.r = reauthenticateWithPhoneNumber;
+exports.s = signInWithPhoneNumber;
+exports.t = onAuthStateChanged;
+exports.u = updatePhoneNumber;
+exports.v = useDeviceLanguage;
+exports.w = updateCurrentUser;
+exports.x = signOut;
+exports.y = deleteUser;
+exports.z = exports.o = exports.m = exports.k = exports.i = exports.b = exports.az = exports.ac = exports.aJ = exports.aI = exports.aH = exports.aE = exports.aD = exports.a = exports.V = exports.U = exports.T = exports.S = exports.R = exports.Q = exports.P = exports.O = exports.N = exports.M = exports.L = exports.K = exports.J = exports.I = exports.H = exports.G = exports.F = exports.C = exports.B = exports.A = void 0;
+
+var _util = require("@firebase/util");
+
+var _app = require("@firebase/app");
+
+var _tslib = require("tslib");
+
+var _logger = require("@firebase/logger");
+
+var _component = require("@firebase/component");
+
+/**
+ * @license
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * An enum of factors that may be used for multifactor authentication.
+ *
+ * @public
+ */
+const FactorId = {
+  /** Phone as second factor */
+  PHONE: 'phone'
+};
+/**
+ * Enumeration of supported providers.
+ *
+ * @public
+ */
+
+exports.F = FactorId;
+const ProviderId = {
+  /** Facebook provider ID */
+  FACEBOOK: 'facebook.com',
+
+  /** GitHub provider ID */
+  GITHUB: 'github.com',
+
+  /** Google provider ID */
+  GOOGLE: 'google.com',
+
+  /** Password provider */
+  PASSWORD: 'password',
+
+  /** Phone provider */
+  PHONE: 'phone',
+
+  /** Twitter provider ID */
+  TWITTER: 'twitter.com'
+};
+/**
+ * Enumeration of supported sign-in methods.
+ *
+ * @public
+ */
+
+exports.o = ProviderId;
+const SignInMethod = {
+  /** Email link sign in method */
+  EMAIL_LINK: 'emailLink',
+
+  /** Email/password sign in method */
+  EMAIL_PASSWORD: 'password',
+
+  /** Facebook sign in method */
+  FACEBOOK: 'facebook.com',
+
+  /** GitHub sign in method */
+  GITHUB: 'github.com',
+
+  /** Google sign in method */
+  GOOGLE: 'google.com',
+
+  /** Phone sign in method */
+  PHONE: 'phone',
+
+  /** Twitter sign in method */
+  TWITTER: 'twitter.com'
+};
+/**
+ * Enumeration of supported operation types.
+ *
+ * @public
+ */
+
+exports.S = SignInMethod;
+const OperationType = {
+  /** Operation involving linking an additional provider to an already signed-in user. */
+  LINK: 'link',
+
+  /** Operation involving using a provider to reauthenticate an already signed-in user. */
+  REAUTHENTICATE: 'reauthenticate',
+
+  /** Operation involving signing in a user. */
+  SIGN_IN: 'signIn'
+};
+/**
+ * An enumeration of the possible email action types.
+ *
+ * @public
+ */
+
+exports.O = OperationType;
+const ActionCodeOperation = {
+  /** The email link sign-in action. */
+  EMAIL_SIGNIN: 'EMAIL_SIGNIN',
+
+  /** The password reset action. */
+  PASSWORD_RESET: 'PASSWORD_RESET',
+
+  /** The email revocation action. */
+  RECOVER_EMAIL: 'RECOVER_EMAIL',
+
+  /** The revert second factor addition email action. */
+  REVERT_SECOND_FACTOR_ADDITION: 'REVERT_SECOND_FACTOR_ADDITION',
+
+  /** The revert second factor addition email action. */
+  VERIFY_AND_CHANGE_EMAIL: 'VERIFY_AND_CHANGE_EMAIL',
+
+  /** The email verification action. */
+  VERIFY_EMAIL: 'VERIFY_EMAIL'
+};
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+exports.A = ActionCodeOperation;
+
+function _debugErrorMap() {
+  return {
+    ["admin-restricted-operation"
+    /* ADMIN_ONLY_OPERATION */
+    ]: 'This operation is restricted to administrators only.',
+    ["argument-error"
+    /* ARGUMENT_ERROR */
+    ]: '',
+    ["app-not-authorized"
+    /* APP_NOT_AUTHORIZED */
+    ]: "This app, identified by the domain where it's hosted, is not " + 'authorized to use Firebase Authentication with the provided API key. ' + 'Review your key configuration in the Google API console.',
+    ["app-not-installed"
+    /* APP_NOT_INSTALLED */
+    ]: 'The requested mobile application corresponding to the identifier (' + 'Android package name or iOS bundle ID) provided is not installed on ' + 'this device.',
+    ["captcha-check-failed"
+    /* CAPTCHA_CHECK_FAILED */
+    ]: 'The reCAPTCHA response token provided is either invalid, expired, ' + 'already used or the domain associated with it does not match the list ' + 'of whitelisted domains.',
+    ["code-expired"
+    /* CODE_EXPIRED */
+    ]: 'The SMS code has expired. Please re-send the verification code to try ' + 'again.',
+    ["cordova-not-ready"
+    /* CORDOVA_NOT_READY */
+    ]: 'Cordova framework is not ready.',
+    ["cors-unsupported"
+    /* CORS_UNSUPPORTED */
+    ]: 'This browser is not supported.',
+    ["credential-already-in-use"
+    /* CREDENTIAL_ALREADY_IN_USE */
+    ]: 'This credential is already associated with a different user account.',
+    ["custom-token-mismatch"
+    /* CREDENTIAL_MISMATCH */
+    ]: 'The custom token corresponds to a different audience.',
+    ["requires-recent-login"
+    /* CREDENTIAL_TOO_OLD_LOGIN_AGAIN */
+    ]: 'This operation is sensitive and requires recent authentication. Log in ' + 'again before retrying this request.',
+    ["dependent-sdk-initialized-before-auth"
+    /* DEPENDENT_SDK_INIT_BEFORE_AUTH */
+    ]: 'Another Firebase SDK was initialized and is trying to use Auth before Auth is ' + 'initialized. Please be sure to call `initializeAuth` or `getAuth` before ' + 'starting any other Firebase SDK.',
+    ["dynamic-link-not-activated"
+    /* DYNAMIC_LINK_NOT_ACTIVATED */
+    ]: 'Please activate Dynamic Links in the Firebase Console and agree to the terms and ' + 'conditions.',
+    ["email-change-needs-verification"
+    /* EMAIL_CHANGE_NEEDS_VERIFICATION */
+    ]: 'Multi-factor users must always have a verified email.',
+    ["email-already-in-use"
+    /* EMAIL_EXISTS */
+    ]: 'The email address is already in use by another account.',
+    ["emulator-config-failed"
+    /* EMULATOR_CONFIG_FAILED */
+    ]: 'Auth instance has already been used to make a network call. Auth can ' + 'no longer be configured to use the emulator. Try calling ' + '"connectAuthEmulator()" sooner.',
+    ["expired-action-code"
+    /* EXPIRED_OOB_CODE */
+    ]: 'The action code has expired.',
+    ["cancelled-popup-request"
+    /* EXPIRED_POPUP_REQUEST */
+    ]: 'This operation has been cancelled due to another conflicting popup being opened.',
+    ["internal-error"
+    /* INTERNAL_ERROR */
+    ]: 'An internal AuthError has occurred.',
+    ["invalid-app-credential"
+    /* INVALID_APP_CREDENTIAL */
+    ]: 'The phone verification request contains an invalid application verifier.' + ' The reCAPTCHA token response is either invalid or expired.',
+    ["invalid-app-id"
+    /* INVALID_APP_ID */
+    ]: 'The mobile app identifier is not registed for the current project.',
+    ["invalid-user-token"
+    /* INVALID_AUTH */
+    ]: "This user's credential isn't valid for this project. This can happen " + "if the user's token has been tampered with, or if the user isn't for " + 'the project associated with this API key.',
+    ["invalid-auth-event"
+    /* INVALID_AUTH_EVENT */
+    ]: 'An internal AuthError has occurred.',
+    ["invalid-verification-code"
+    /* INVALID_CODE */
+    ]: 'The SMS verification code used to create the phone auth credential is ' + 'invalid. Please resend the verification code sms and be sure to use the ' + 'verification code provided by the user.',
+    ["invalid-continue-uri"
+    /* INVALID_CONTINUE_URI */
+    ]: 'The continue URL provided in the request is invalid.',
+    ["invalid-cordova-configuration"
+    /* INVALID_CORDOVA_CONFIGURATION */
+    ]: 'The following Cordova plugins must be installed to enable OAuth sign-in: ' + 'cordova-plugin-buildinfo, cordova-universal-links-plugin, ' + 'cordova-plugin-browsertab, cordova-plugin-inappbrowser and ' + 'cordova-plugin-customurlscheme.',
+    ["invalid-custom-token"
+    /* INVALID_CUSTOM_TOKEN */
+    ]: 'The custom token format is incorrect. Please check the documentation.',
+    ["invalid-dynamic-link-domain"
+    /* INVALID_DYNAMIC_LINK_DOMAIN */
+    ]: 'The provided dynamic link domain is not configured or authorized for the current project.',
+    ["invalid-email"
+    /* INVALID_EMAIL */
+    ]: 'The email address is badly formatted.',
+    ["invalid-emulator-scheme"
+    /* INVALID_EMULATOR_SCHEME */
+    ]: 'Emulator URL must start with a valid scheme (http:// or https://).',
+    ["invalid-api-key"
+    /* INVALID_API_KEY */
+    ]: 'Your API key is invalid, please check you have copied it correctly.',
+    ["invalid-cert-hash"
+    /* INVALID_CERT_HASH */
+    ]: 'The SHA-1 certificate hash provided is invalid.',
+    ["invalid-credential"
+    /* INVALID_IDP_RESPONSE */
+    ]: 'The supplied auth credential is malformed or has expired.',
+    ["invalid-message-payload"
+    /* INVALID_MESSAGE_PAYLOAD */
+    ]: 'The email template corresponding to this action contains invalid characters in its message. ' + 'Please fix by going to the Auth email templates section in the Firebase Console.',
+    ["invalid-multi-factor-session"
+    /* INVALID_MFA_SESSION */
+    ]: 'The request does not contain a valid proof of first factor successful sign-in.',
+    ["invalid-oauth-provider"
+    /* INVALID_OAUTH_PROVIDER */
+    ]: 'EmailAuthProvider is not supported for this operation. This operation ' + 'only supports OAuth providers.',
+    ["invalid-oauth-client-id"
+    /* INVALID_OAUTH_CLIENT_ID */
+    ]: 'The OAuth client ID provided is either invalid or does not match the ' + 'specified API key.',
+    ["unauthorized-domain"
+    /* INVALID_ORIGIN */
+    ]: 'This domain is not authorized for OAuth operations for your Firebase ' + 'project. Edit the list of authorized domains from the Firebase console.',
+    ["invalid-action-code"
+    /* INVALID_OOB_CODE */
+    ]: 'The action code is invalid. This can happen if the code is malformed, ' + 'expired, or has already been used.',
+    ["wrong-password"
+    /* INVALID_PASSWORD */
+    ]: 'The password is invalid or the user does not have a password.',
+    ["invalid-persistence-type"
+    /* INVALID_PERSISTENCE */
+    ]: 'The specified persistence type is invalid. It can only be local, session or none.',
+    ["invalid-phone-number"
+    /* INVALID_PHONE_NUMBER */
+    ]: 'The format of the phone number provided is incorrect. Please enter the ' + 'phone number in a format that can be parsed into E.164 format. E.164 ' + 'phone numbers are written in the format [+][country code][subscriber ' + 'number including area code].',
+    ["invalid-provider-id"
+    /* INVALID_PROVIDER_ID */
+    ]: 'The specified provider ID is invalid.',
+    ["invalid-recipient-email"
+    /* INVALID_RECIPIENT_EMAIL */
+    ]: 'The email corresponding to this action failed to send as the provided ' + 'recipient email address is invalid.',
+    ["invalid-sender"
+    /* INVALID_SENDER */
+    ]: 'The email template corresponding to this action contains an invalid sender email or name. ' + 'Please fix by going to the Auth email templates section in the Firebase Console.',
+    ["invalid-verification-id"
+    /* INVALID_SESSION_INFO */
+    ]: 'The verification ID used to create the phone auth credential is invalid.',
+    ["invalid-tenant-id"
+    /* INVALID_TENANT_ID */
+    ]: "The Auth instance's tenant ID is invalid.",
+    ["missing-android-pkg-name"
+    /* MISSING_ANDROID_PACKAGE_NAME */
+    ]: 'An Android Package Name must be provided if the Android App is required to be installed.',
+    ["auth-domain-config-required"
+    /* MISSING_AUTH_DOMAIN */
+    ]: 'Be sure to include authDomain when calling firebase.initializeApp(), ' + 'by following the instructions in the Firebase console.',
+    ["missing-app-credential"
+    /* MISSING_APP_CREDENTIAL */
+    ]: 'The phone verification request is missing an application verifier ' + 'assertion. A reCAPTCHA response token needs to be provided.',
+    ["missing-verification-code"
+    /* MISSING_CODE */
+    ]: 'The phone auth credential was created with an empty SMS verification code.',
+    ["missing-continue-uri"
+    /* MISSING_CONTINUE_URI */
+    ]: 'A continue URL must be provided in the request.',
+    ["missing-iframe-start"
+    /* MISSING_IFRAME_START */
+    ]: 'An internal AuthError has occurred.',
+    ["missing-ios-bundle-id"
+    /* MISSING_IOS_BUNDLE_ID */
+    ]: 'An iOS Bundle ID must be provided if an App Store ID is provided.',
+    ["missing-or-invalid-nonce"
+    /* MISSING_OR_INVALID_NONCE */
+    ]: 'The request does not contain a valid nonce. This can occur if the ' + 'SHA-256 hash of the provided raw nonce does not match the hashed nonce ' + 'in the ID token payload.',
+    ["missing-multi-factor-info"
+    /* MISSING_MFA_INFO */
+    ]: 'No second factor identifier is provided.',
+    ["missing-multi-factor-session"
+    /* MISSING_MFA_SESSION */
+    ]: 'The request is missing proof of first factor successful sign-in.',
+    ["missing-phone-number"
+    /* MISSING_PHONE_NUMBER */
+    ]: 'To send verification codes, provide a phone number for the recipient.',
+    ["missing-verification-id"
+    /* MISSING_SESSION_INFO */
+    ]: 'The phone auth credential was created with an empty verification ID.',
+    ["app-deleted"
+    /* MODULE_DESTROYED */
+    ]: 'This instance of FirebaseApp has been deleted.',
+    ["multi-factor-info-not-found"
+    /* MFA_INFO_NOT_FOUND */
+    ]: 'The user does not have a second factor matching the identifier provided.',
+    ["multi-factor-auth-required"
+    /* MFA_REQUIRED */
+    ]: 'Proof of ownership of a second factor is required to complete sign-in.',
+    ["account-exists-with-different-credential"
+    /* NEED_CONFIRMATION */
+    ]: 'An account already exists with the same email address but different ' + 'sign-in credentials. Sign in using a provider associated with this ' + 'email address.',
+    ["network-request-failed"
+    /* NETWORK_REQUEST_FAILED */
+    ]: 'A network AuthError (such as timeout, interrupted connection or unreachable host) has occurred.',
+    ["no-auth-event"
+    /* NO_AUTH_EVENT */
+    ]: 'An internal AuthError has occurred.',
+    ["no-such-provider"
+    /* NO_SUCH_PROVIDER */
+    ]: 'User was not linked to an account with the given provider.',
+    ["null-user"
+    /* NULL_USER */
+    ]: 'A null user object was provided as the argument for an operation which ' + 'requires a non-null user object.',
+    ["operation-not-allowed"
+    /* OPERATION_NOT_ALLOWED */
+    ]: 'The given sign-in provider is disabled for this Firebase project. ' + 'Enable it in the Firebase console, under the sign-in method tab of the ' + 'Auth section.',
+    ["operation-not-supported-in-this-environment"
+    /* OPERATION_NOT_SUPPORTED */
+    ]: 'This operation is not supported in the environment this application is ' + 'running on. "location.protocol" must be http, https or chrome-extension' + ' and web storage must be enabled.',
+    ["popup-blocked"
+    /* POPUP_BLOCKED */
+    ]: 'Unable to establish a connection with the popup. It may have been blocked by the browser.',
+    ["popup-closed-by-user"
+    /* POPUP_CLOSED_BY_USER */
+    ]: 'The popup has been closed by the user before finalizing the operation.',
+    ["provider-already-linked"
+    /* PROVIDER_ALREADY_LINKED */
+    ]: 'User can only be linked to one identity for the given provider.',
+    ["quota-exceeded"
+    /* QUOTA_EXCEEDED */
+    ]: "The project's quota for this operation has been exceeded.",
+    ["redirect-cancelled-by-user"
+    /* REDIRECT_CANCELLED_BY_USER */
+    ]: 'The redirect operation has been cancelled by the user before finalizing.',
+    ["redirect-operation-pending"
+    /* REDIRECT_OPERATION_PENDING */
+    ]: 'A redirect sign-in operation is already pending.',
+    ["rejected-credential"
+    /* REJECTED_CREDENTIAL */
+    ]: 'The request contains malformed or mismatching credentials.',
+    ["second-factor-already-in-use"
+    /* SECOND_FACTOR_ALREADY_ENROLLED */
+    ]: 'The second factor is already enrolled on this account.',
+    ["maximum-second-factor-count-exceeded"
+    /* SECOND_FACTOR_LIMIT_EXCEEDED */
+    ]: 'The maximum allowed number of second factors on a user has been exceeded.',
+    ["tenant-id-mismatch"
+    /* TENANT_ID_MISMATCH */
+    ]: "The provided tenant ID does not match the Auth instance's tenant ID",
+    ["timeout"
+    /* TIMEOUT */
+    ]: 'The operation has timed out.',
+    ["user-token-expired"
+    /* TOKEN_EXPIRED */
+    ]: "The user's credential is no longer valid. The user must sign in again.",
+    ["too-many-requests"
+    /* TOO_MANY_ATTEMPTS_TRY_LATER */
+    ]: 'We have blocked all requests from this device due to unusual activity. ' + 'Try again later.',
+    ["unauthorized-continue-uri"
+    /* UNAUTHORIZED_DOMAIN */
+    ]: 'The domain of the continue URL is not whitelisted.  Please whitelist ' + 'the domain in the Firebase console.',
+    ["unsupported-first-factor"
+    /* UNSUPPORTED_FIRST_FACTOR */
+    ]: 'Enrolling a second factor or signing in with a multi-factor account requires sign-in with a supported first factor.',
+    ["unsupported-persistence-type"
+    /* UNSUPPORTED_PERSISTENCE */
+    ]: 'The current environment does not support the specified persistence type.',
+    ["unsupported-tenant-operation"
+    /* UNSUPPORTED_TENANT_OPERATION */
+    ]: 'This operation is not supported in a multi-tenant context.',
+    ["unverified-email"
+    /* UNVERIFIED_EMAIL */
+    ]: 'The operation requires a verified email.',
+    ["user-cancelled"
+    /* USER_CANCELLED */
+    ]: 'The user did not grant your application the permissions it requested.',
+    ["user-not-found"
+    /* USER_DELETED */
+    ]: 'There is no user record corresponding to this identifier. The user may ' + 'have been deleted.',
+    ["user-disabled"
+    /* USER_DISABLED */
+    ]: 'The user account has been disabled by an administrator.',
+    ["user-mismatch"
+    /* USER_MISMATCH */
+    ]: 'The supplied credentials do not correspond to the previously signed in user.',
+    ["user-signed-out"
+    /* USER_SIGNED_OUT */
+    ]: '',
+    ["weak-password"
+    /* WEAK_PASSWORD */
+    ]: 'The password must be 6 characters long or more.',
+    ["web-storage-unsupported"
+    /* WEB_STORAGE_UNSUPPORTED */
+    ]: 'This browser is not supported or 3rd party cookies and data may be disabled.',
+    ["already-initialized"
+    /* ALREADY_INITIALIZED */
+    ]: 'initializeAuth() has already been called with ' + 'different options. To avoid this error, call initializeAuth() with the ' + 'same options as when it was originally called, or call getAuth() to return the' + ' already initialized instance.'
+  };
+}
+
+function _prodErrorMap() {
+  // We will include this one message in the prod error map since by the very
+  // nature of this error, developers will never be able to see the message
+  // using the debugErrorMap (which is installed during auth initialization).
+  return {
+    ["dependent-sdk-initialized-before-auth"
+    /* DEPENDENT_SDK_INIT_BEFORE_AUTH */
+    ]: 'Another Firebase SDK was initialized and is trying to use Auth before Auth is ' + 'initialized. Please be sure to call `initializeAuth` or `getAuth` before ' + 'starting any other Firebase SDK.'
+  };
+}
+/**
+ * A verbose error map with detailed descriptions for most error codes.
+ *
+ * See discussion at {@link AuthErrorMap}
+ *
+ * @public
+ */
+
+
+const debugErrorMap = _debugErrorMap;
+/**
+ * A minimal error map with all verbose error messages stripped.
+ *
+ * See discussion at {@link AuthErrorMap}
+ *
+ * @public
+ */
+
+exports.z = debugErrorMap;
+const prodErrorMap = _prodErrorMap;
+exports.B = prodErrorMap;
+
+const _DEFAULT_AUTH_ERROR_FACTORY = new _util.ErrorFactory('auth', 'Firebase', _prodErrorMap());
+/**
+ * A map of potential `Auth` error codes, for easier comparison with errors
+ * thrown by the SDK.
+ *
+ * @remarks
+ * Note that you can't tree-shake individual keys
+ * in the map, so by using the map you might substantially increase your
+ * bundle size.
+ *
+ * @public
+ */
+
+
+const AUTH_ERROR_CODES_MAP_DO_NOT_USE_INTERNALLY = {
+  ADMIN_ONLY_OPERATION: 'auth/admin-restricted-operation',
+  ARGUMENT_ERROR: 'auth/argument-error',
+  APP_NOT_AUTHORIZED: 'auth/app-not-authorized',
+  APP_NOT_INSTALLED: 'auth/app-not-installed',
+  CAPTCHA_CHECK_FAILED: 'auth/captcha-check-failed',
+  CODE_EXPIRED: 'auth/code-expired',
+  CORDOVA_NOT_READY: 'auth/cordova-not-ready',
+  CORS_UNSUPPORTED: 'auth/cors-unsupported',
+  CREDENTIAL_ALREADY_IN_USE: 'auth/credential-already-in-use',
+  CREDENTIAL_MISMATCH: 'auth/custom-token-mismatch',
+  CREDENTIAL_TOO_OLD_LOGIN_AGAIN: 'auth/requires-recent-login',
+  DEPENDENT_SDK_INIT_BEFORE_AUTH: 'auth/dependent-sdk-initialized-before-auth',
+  DYNAMIC_LINK_NOT_ACTIVATED: 'auth/dynamic-link-not-activated',
+  EMAIL_CHANGE_NEEDS_VERIFICATION: 'auth/email-change-needs-verification',
+  EMAIL_EXISTS: 'auth/email-already-in-use',
+  EMULATOR_CONFIG_FAILED: 'auth/emulator-config-failed',
+  EXPIRED_OOB_CODE: 'auth/expired-action-code',
+  EXPIRED_POPUP_REQUEST: 'auth/cancelled-popup-request',
+  INTERNAL_ERROR: 'auth/internal-error',
+  INVALID_API_KEY: 'auth/invalid-api-key',
+  INVALID_APP_CREDENTIAL: 'auth/invalid-app-credential',
+  INVALID_APP_ID: 'auth/invalid-app-id',
+  INVALID_AUTH: 'auth/invalid-user-token',
+  INVALID_AUTH_EVENT: 'auth/invalid-auth-event',
+  INVALID_CERT_HASH: 'auth/invalid-cert-hash',
+  INVALID_CODE: 'auth/invalid-verification-code',
+  INVALID_CONTINUE_URI: 'auth/invalid-continue-uri',
+  INVALID_CORDOVA_CONFIGURATION: 'auth/invalid-cordova-configuration',
+  INVALID_CUSTOM_TOKEN: 'auth/invalid-custom-token',
+  INVALID_DYNAMIC_LINK_DOMAIN: 'auth/invalid-dynamic-link-domain',
+  INVALID_EMAIL: 'auth/invalid-email',
+  INVALID_EMULATOR_SCHEME: 'auth/invalid-emulator-scheme',
+  INVALID_IDP_RESPONSE: 'auth/invalid-credential',
+  INVALID_MESSAGE_PAYLOAD: 'auth/invalid-message-payload',
+  INVALID_MFA_SESSION: 'auth/invalid-multi-factor-session',
+  INVALID_OAUTH_CLIENT_ID: 'auth/invalid-oauth-client-id',
+  INVALID_OAUTH_PROVIDER: 'auth/invalid-oauth-provider',
+  INVALID_OOB_CODE: 'auth/invalid-action-code',
+  INVALID_ORIGIN: 'auth/unauthorized-domain',
+  INVALID_PASSWORD: 'auth/wrong-password',
+  INVALID_PERSISTENCE: 'auth/invalid-persistence-type',
+  INVALID_PHONE_NUMBER: 'auth/invalid-phone-number',
+  INVALID_PROVIDER_ID: 'auth/invalid-provider-id',
+  INVALID_RECIPIENT_EMAIL: 'auth/invalid-recipient-email',
+  INVALID_SENDER: 'auth/invalid-sender',
+  INVALID_SESSION_INFO: 'auth/invalid-verification-id',
+  INVALID_TENANT_ID: 'auth/invalid-tenant-id',
+  MFA_INFO_NOT_FOUND: 'auth/multi-factor-info-not-found',
+  MFA_REQUIRED: 'auth/multi-factor-auth-required',
+  MISSING_ANDROID_PACKAGE_NAME: 'auth/missing-android-pkg-name',
+  MISSING_APP_CREDENTIAL: 'auth/missing-app-credential',
+  MISSING_AUTH_DOMAIN: 'auth/auth-domain-config-required',
+  MISSING_CODE: 'auth/missing-verification-code',
+  MISSING_CONTINUE_URI: 'auth/missing-continue-uri',
+  MISSING_IFRAME_START: 'auth/missing-iframe-start',
+  MISSING_IOS_BUNDLE_ID: 'auth/missing-ios-bundle-id',
+  MISSING_OR_INVALID_NONCE: 'auth/missing-or-invalid-nonce',
+  MISSING_MFA_INFO: 'auth/missing-multi-factor-info',
+  MISSING_MFA_SESSION: 'auth/missing-multi-factor-session',
+  MISSING_PHONE_NUMBER: 'auth/missing-phone-number',
+  MISSING_SESSION_INFO: 'auth/missing-verification-id',
+  MODULE_DESTROYED: 'auth/app-deleted',
+  NEED_CONFIRMATION: 'auth/account-exists-with-different-credential',
+  NETWORK_REQUEST_FAILED: 'auth/network-request-failed',
+  NULL_USER: 'auth/null-user',
+  NO_AUTH_EVENT: 'auth/no-auth-event',
+  NO_SUCH_PROVIDER: 'auth/no-such-provider',
+  OPERATION_NOT_ALLOWED: 'auth/operation-not-allowed',
+  OPERATION_NOT_SUPPORTED: 'auth/operation-not-supported-in-this-environment',
+  POPUP_BLOCKED: 'auth/popup-blocked',
+  POPUP_CLOSED_BY_USER: 'auth/popup-closed-by-user',
+  PROVIDER_ALREADY_LINKED: 'auth/provider-already-linked',
+  QUOTA_EXCEEDED: 'auth/quota-exceeded',
+  REDIRECT_CANCELLED_BY_USER: 'auth/redirect-cancelled-by-user',
+  REDIRECT_OPERATION_PENDING: 'auth/redirect-operation-pending',
+  REJECTED_CREDENTIAL: 'auth/rejected-credential',
+  SECOND_FACTOR_ALREADY_ENROLLED: 'auth/second-factor-already-in-use',
+  SECOND_FACTOR_LIMIT_EXCEEDED: 'auth/maximum-second-factor-count-exceeded',
+  TENANT_ID_MISMATCH: 'auth/tenant-id-mismatch',
+  TIMEOUT: 'auth/timeout',
+  TOKEN_EXPIRED: 'auth/user-token-expired',
+  TOO_MANY_ATTEMPTS_TRY_LATER: 'auth/too-many-requests',
+  UNAUTHORIZED_DOMAIN: 'auth/unauthorized-continue-uri',
+  UNSUPPORTED_FIRST_FACTOR: 'auth/unsupported-first-factor',
+  UNSUPPORTED_PERSISTENCE: 'auth/unsupported-persistence-type',
+  UNSUPPORTED_TENANT_OPERATION: 'auth/unsupported-tenant-operation',
+  UNVERIFIED_EMAIL: 'auth/unverified-email',
+  USER_CANCELLED: 'auth/user-cancelled',
+  USER_DELETED: 'auth/user-not-found',
+  USER_DISABLED: 'auth/user-disabled',
+  USER_MISMATCH: 'auth/user-mismatch',
+  USER_SIGNED_OUT: 'auth/user-signed-out',
+  WEAK_PASSWORD: 'auth/weak-password',
+  WEB_STORAGE_UNSUPPORTED: 'auth/web-storage-unsupported',
+  ALREADY_INITIALIZED: 'auth/already-initialized'
+};
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+exports.C = AUTH_ERROR_CODES_MAP_DO_NOT_USE_INTERNALLY;
+const logClient = new _logger.Logger('@firebase/auth');
+
+function _logError(msg, ...args) {
+  if (logClient.logLevel <= _logger.LogLevel.ERROR) {
+    logClient.error(`Auth (${_app.SDK_VERSION}): ${msg}`, ...args);
+  }
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+function _fail(authOrCode, ...rest) {
+  throw createErrorInternal(authOrCode, ...rest);
+}
+
+function _createError(authOrCode, ...rest) {
+  return createErrorInternal(authOrCode, ...rest);
+}
+
+function _errorWithCustomMessage(auth, code, message) {
+  const errorMap = Object.assign(Object.assign({}, prodErrorMap()), {
+    [code]: message
+  });
+  const factory = new _util.ErrorFactory('auth', 'Firebase', errorMap);
+  return factory.create(code, {
+    appName: auth.name
+  });
+}
+
+function _assertInstanceOf(auth, object, instance) {
+  const constructorInstance = instance;
+
+  if (!(object instanceof constructorInstance)) {
+    if (constructorInstance.name !== object.constructor.name) {
+      _fail(auth, "argument-error"
+      /* ARGUMENT_ERROR */
+      );
+    }
+
+    throw _errorWithCustomMessage(auth, "argument-error"
+    /* ARGUMENT_ERROR */
+    , `Type of ${object.constructor.name} does not match expected instance.` + `Did you pass a reference from a different Auth SDK?`);
+  }
+}
+
+function createErrorInternal(authOrCode, ...rest) {
+  if (typeof authOrCode !== 'string') {
+    const code = rest[0];
+    const fullParams = [...rest.slice(1)];
+
+    if (fullParams[0]) {
+      fullParams[0].appName = authOrCode.name;
+    }
+
+    return authOrCode._errorFactory.create(code, ...fullParams);
+  }
+
+  return _DEFAULT_AUTH_ERROR_FACTORY.create(authOrCode, ...rest);
+}
+
+function _assert(assertion, authOrCode, ...rest) {
+  if (!assertion) {
+    throw createErrorInternal(authOrCode, ...rest);
+  }
+}
+/**
+ * Unconditionally fails, throwing an internal error with the given message.
+ *
+ * @param failure type of failure encountered
+ * @throws Error
+ */
+
+
+function debugFail(failure) {
+  // Log the failure in addition to throw an exception, just in case the
+  // exception is swallowed.
+  const message = `INTERNAL ASSERTION FAILED: ` + failure;
+
+  _logError(message); // NOTE: We don't use FirebaseError here because these are internal failures
+  // that cannot be handled by the user. (Also it would create a circular
+  // dependency between the error and assert modules which doesn't work.)
+
+
+  throw new Error(message);
+}
+/**
+ * Fails if the given assertion condition is false, throwing an Error with the
+ * given message if it did.
+ *
+ * @param assertion
+ * @param message
+ */
+
+
+function debugAssert(assertion, message) {
+  if (!assertion) {
+    debugFail(message);
+  }
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+const instanceCache = new Map();
+
+function _getInstance(cls) {
+  debugAssert(cls instanceof Function, 'Expected a class definition');
+  let instance = instanceCache.get(cls);
+
+  if (instance) {
+    debugAssert(instance instanceof cls, 'Instance stored in cache mismatched with class');
+    return instance;
+  }
+
+  instance = new cls();
+  instanceCache.set(cls, instance);
+  return instance;
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Initializes an {@link Auth} instance with fine-grained control over
+ * {@link Dependencies}.
+ *
+ * @remarks
+ *
+ * This function allows more control over the {@link Auth} instance than
+ * {@link getAuth}. `getAuth` uses platform-specific defaults to supply
+ * the {@link Dependencies}. In general, `getAuth` is the easiest way to
+ * initialize Auth and works for most use cases. Use `initializeAuth` if you
+ * need control over which persistence layer is used, or to minimize bundle
+ * size if you're not using either `signInWithPopup` or `signInWithRedirect`.
+ *
+ * For example, if your app only uses anonymous accounts and you only want
+ * accounts saved for the current session, initialize `Auth` with:
+ *
+ * ```js
+ * const auth = initializeAuth(app, {
+ *   persistence: browserSessionPersistence,
+ *   popupRedirectResolver: undefined,
+ * });
+ * ```
+ *
+ * @public
+ */
+
+
+function initializeAuth(app, deps) {
+  const provider = (0, _app._getProvider)(app, 'auth');
+
+  if (provider.isInitialized()) {
+    const auth = provider.getImmediate();
+    const initialOptions = provider.getOptions();
+
+    if ((0, _util.deepEqual)(initialOptions, deps !== null && deps !== void 0 ? deps : {})) {
+      return auth;
+    } else {
+      _fail(auth, "already-initialized"
+      /* ALREADY_INITIALIZED */
+      );
+    }
+  }
+
+  const auth = provider.initialize({
+    options: deps
+  });
+  return auth;
+}
+
+function _initializeAuthInstance(auth, deps) {
+  const persistence = (deps === null || deps === void 0 ? void 0 : deps.persistence) || [];
+  const hierarchy = (Array.isArray(persistence) ? persistence : [persistence]).map(_getInstance);
+
+  if (deps === null || deps === void 0 ? void 0 : deps.errorMap) {
+    auth._updateErrorMap(deps.errorMap);
+  } // This promise is intended to float; auth initialization happens in the
+  // background, meanwhile the auth object may be used by the app.
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+
+
+  auth._initializeWithPersistence(hierarchy, deps === null || deps === void 0 ? void 0 : deps.popupRedirectResolver);
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+function _getCurrentUrl() {
+  var _a;
+
+  return typeof self !== 'undefined' && ((_a = self.location) === null || _a === void 0 ? void 0 : _a.href) || '';
+}
+
+function _isHttpOrHttps() {
+  return _getCurrentScheme() === 'http:' || _getCurrentScheme() === 'https:';
+}
+
+function _getCurrentScheme() {
+  var _a;
+
+  return typeof self !== 'undefined' && ((_a = self.location) === null || _a === void 0 ? void 0 : _a.protocol) || null;
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Determine whether the browser is working online
+ */
+
+
+function _isOnline() {
+  if (typeof navigator !== 'undefined' && navigator && 'onLine' in navigator && typeof navigator.onLine === 'boolean' && (_isHttpOrHttps() || (0, _util.isBrowserExtension)() || 'connection' in navigator)) {
+    return navigator.onLine;
+  } // If we can't determine the state, assume it is online.
+
+
+  return true;
+}
+
+function _getUserLanguage() {
+  if (typeof navigator === 'undefined') {
+    return null;
+  }
+
+  const navigatorLanguage = navigator;
+  return (// Most reliable, but only supported in Chrome/Firefox.
+    navigatorLanguage.languages && navigatorLanguage.languages[0] || // Supported in most browsers, but returns the language of the browser
+    // UI, not the language set in browser settings.
+    navigatorLanguage.language || // Couldn't determine language.
+    null
+  );
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * A structure to help pick between a range of long and short delay durations
+ * depending on the current environment. In general, the long delay is used for
+ * mobile environments whereas short delays are used for desktop environments.
+ */
+
+
+class Delay {
+  constructor(shortDelay, longDelay) {
+    this.shortDelay = shortDelay;
+    this.longDelay = longDelay; // Internal error when improperly initialized.
+
+    debugAssert(longDelay > shortDelay, 'Short delay should be less than long delay!');
+    this.isMobile = (0, _util.isMobileCordova)() || (0, _util.isReactNative)();
+  }
+
+  get() {
+    if (!_isOnline()) {
+      // Pick the shorter timeout.
+      return Math.min(5000
+      /* OFFLINE */
+      , this.shortDelay);
+    } // If running in a mobile environment, return the long delay, otherwise
+    // return the short delay.
+    // This could be improved in the future to dynamically change based on other
+    // variables instead of just reading the current environment.
+
+
+    return this.isMobile ? this.longDelay : this.shortDelay;
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+function _emulatorUrl(config, path) {
+  debugAssert(config.emulator, 'Emulator should always be set here');
+  const {
+    url
+  } = config.emulator;
+
+  if (!path) {
+    return url;
+  }
+
+  return `${url}${path.startsWith('/') ? path.slice(1) : path}`;
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+class FetchProvider {
+  static initialize(fetchImpl, headersImpl, responseImpl) {
+    this.fetchImpl = fetchImpl;
+
+    if (headersImpl) {
+      this.headersImpl = headersImpl;
+    }
+
+    if (responseImpl) {
+      this.responseImpl = responseImpl;
+    }
+  }
+
+  static fetch() {
+    if (this.fetchImpl) {
+      return this.fetchImpl;
+    }
+
+    if (typeof self !== 'undefined' && 'fetch' in self) {
+      return self.fetch;
+    }
+
+    debugFail('Could not find fetch implementation, make sure you call FetchProvider.initialize() with an appropriate polyfill');
+  }
+
+  static headers() {
+    if (this.headersImpl) {
+      return this.headersImpl;
+    }
+
+    if (typeof self !== 'undefined' && 'Headers' in self) {
+      return self.Headers;
+    }
+
+    debugFail('Could not find Headers implementation, make sure you call FetchProvider.initialize() with an appropriate polyfill');
+  }
+
+  static response() {
+    if (this.responseImpl) {
+      return this.responseImpl;
+    }
+
+    if (typeof self !== 'undefined' && 'Response' in self) {
+      return self.Response;
+    }
+
+    debugFail('Could not find Response implementation, make sure you call FetchProvider.initialize() with an appropriate polyfill');
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Map from errors returned by the server to errors to developer visible errors
+ */
+
+
+exports.aI = FetchProvider;
+const SERVER_ERROR_MAP = {
+  // Custom token errors.
+  ["CREDENTIAL_MISMATCH"
+  /* CREDENTIAL_MISMATCH */
+  ]: "custom-token-mismatch"
+  /* CREDENTIAL_MISMATCH */
+  ,
+  // This can only happen if the SDK sends a bad request.
+  ["MISSING_CUSTOM_TOKEN"
+  /* MISSING_CUSTOM_TOKEN */
+  ]: "internal-error"
+  /* INTERNAL_ERROR */
+  ,
+  // Create Auth URI errors.
+  ["INVALID_IDENTIFIER"
+  /* INVALID_IDENTIFIER */
+  ]: "invalid-email"
+  /* INVALID_EMAIL */
+  ,
+  // This can only happen if the SDK sends a bad request.
+  ["MISSING_CONTINUE_URI"
+  /* MISSING_CONTINUE_URI */
+  ]: "internal-error"
+  /* INTERNAL_ERROR */
+  ,
+  // Sign in with email and password errors (some apply to sign up too).
+  ["INVALID_PASSWORD"
+  /* INVALID_PASSWORD */
+  ]: "wrong-password"
+  /* INVALID_PASSWORD */
+  ,
+  // This can only happen if the SDK sends a bad request.
+  ["MISSING_PASSWORD"
+  /* MISSING_PASSWORD */
+  ]: "internal-error"
+  /* INTERNAL_ERROR */
+  ,
+  // Sign up with email and password errors.
+  ["EMAIL_EXISTS"
+  /* EMAIL_EXISTS */
+  ]: "email-already-in-use"
+  /* EMAIL_EXISTS */
+  ,
+  ["PASSWORD_LOGIN_DISABLED"
+  /* PASSWORD_LOGIN_DISABLED */
+  ]: "operation-not-allowed"
+  /* OPERATION_NOT_ALLOWED */
+  ,
+  // Verify assertion for sign in with credential errors:
+  ["INVALID_IDP_RESPONSE"
+  /* INVALID_IDP_RESPONSE */
+  ]: "invalid-credential"
+  /* INVALID_IDP_RESPONSE */
+  ,
+  ["INVALID_PENDING_TOKEN"
+  /* INVALID_PENDING_TOKEN */
+  ]: "invalid-credential"
+  /* INVALID_IDP_RESPONSE */
+  ,
+  ["FEDERATED_USER_ID_ALREADY_LINKED"
+  /* FEDERATED_USER_ID_ALREADY_LINKED */
+  ]: "credential-already-in-use"
+  /* CREDENTIAL_ALREADY_IN_USE */
+  ,
+  // This can only happen if the SDK sends a bad request.
+  ["MISSING_REQ_TYPE"
+  /* MISSING_REQ_TYPE */
+  ]: "internal-error"
+  /* INTERNAL_ERROR */
+  ,
+  // Send Password reset email errors:
+  ["EMAIL_NOT_FOUND"
+  /* EMAIL_NOT_FOUND */
+  ]: "user-not-found"
+  /* USER_DELETED */
+  ,
+  ["RESET_PASSWORD_EXCEED_LIMIT"
+  /* RESET_PASSWORD_EXCEED_LIMIT */
+  ]: "too-many-requests"
+  /* TOO_MANY_ATTEMPTS_TRY_LATER */
+  ,
+  ["EXPIRED_OOB_CODE"
+  /* EXPIRED_OOB_CODE */
+  ]: "expired-action-code"
+  /* EXPIRED_OOB_CODE */
+  ,
+  ["INVALID_OOB_CODE"
+  /* INVALID_OOB_CODE */
+  ]: "invalid-action-code"
+  /* INVALID_OOB_CODE */
+  ,
+  // This can only happen if the SDK sends a bad request.
+  ["MISSING_OOB_CODE"
+  /* MISSING_OOB_CODE */
+  ]: "internal-error"
+  /* INTERNAL_ERROR */
+  ,
+  // Operations that require ID token in request:
+  ["CREDENTIAL_TOO_OLD_LOGIN_AGAIN"
+  /* CREDENTIAL_TOO_OLD_LOGIN_AGAIN */
+  ]: "requires-recent-login"
+  /* CREDENTIAL_TOO_OLD_LOGIN_AGAIN */
+  ,
+  ["INVALID_ID_TOKEN"
+  /* INVALID_ID_TOKEN */
+  ]: "invalid-user-token"
+  /* INVALID_AUTH */
+  ,
+  ["TOKEN_EXPIRED"
+  /* TOKEN_EXPIRED */
+  ]: "user-token-expired"
+  /* TOKEN_EXPIRED */
+  ,
+  ["USER_NOT_FOUND"
+  /* USER_NOT_FOUND */
+  ]: "user-token-expired"
+  /* TOKEN_EXPIRED */
+  ,
+  // Other errors.
+  ["TOO_MANY_ATTEMPTS_TRY_LATER"
+  /* TOO_MANY_ATTEMPTS_TRY_LATER */
+  ]: "too-many-requests"
+  /* TOO_MANY_ATTEMPTS_TRY_LATER */
+  ,
+  // Phone Auth related errors.
+  ["INVALID_CODE"
+  /* INVALID_CODE */
+  ]: "invalid-verification-code"
+  /* INVALID_CODE */
+  ,
+  ["INVALID_SESSION_INFO"
+  /* INVALID_SESSION_INFO */
+  ]: "invalid-verification-id"
+  /* INVALID_SESSION_INFO */
+  ,
+  ["INVALID_TEMPORARY_PROOF"
+  /* INVALID_TEMPORARY_PROOF */
+  ]: "invalid-credential"
+  /* INVALID_IDP_RESPONSE */
+  ,
+  ["MISSING_SESSION_INFO"
+  /* MISSING_SESSION_INFO */
+  ]: "missing-verification-id"
+  /* MISSING_SESSION_INFO */
+  ,
+  ["SESSION_EXPIRED"
+  /* SESSION_EXPIRED */
+  ]: "code-expired"
+  /* CODE_EXPIRED */
+  ,
+  // Other action code errors when additional settings passed.
+  // MISSING_CONTINUE_URI is getting mapped to INTERNAL_ERROR above.
+  // This is OK as this error will be caught by client side validation.
+  ["MISSING_ANDROID_PACKAGE_NAME"
+  /* MISSING_ANDROID_PACKAGE_NAME */
+  ]: "missing-android-pkg-name"
+  /* MISSING_ANDROID_PACKAGE_NAME */
+  ,
+  ["UNAUTHORIZED_DOMAIN"
+  /* UNAUTHORIZED_DOMAIN */
+  ]: "unauthorized-continue-uri"
+  /* UNAUTHORIZED_DOMAIN */
+  ,
+  // getProjectConfig errors when clientId is passed.
+  ["INVALID_OAUTH_CLIENT_ID"
+  /* INVALID_OAUTH_CLIENT_ID */
+  ]: "invalid-oauth-client-id"
+  /* INVALID_OAUTH_CLIENT_ID */
+  ,
+  // User actions (sign-up or deletion) disabled errors.
+  ["ADMIN_ONLY_OPERATION"
+  /* ADMIN_ONLY_OPERATION */
+  ]: "admin-restricted-operation"
+  /* ADMIN_ONLY_OPERATION */
+  ,
+  // Multi factor related errors.
+  ["INVALID_MFA_PENDING_CREDENTIAL"
+  /* INVALID_MFA_PENDING_CREDENTIAL */
+  ]: "invalid-multi-factor-session"
+  /* INVALID_MFA_SESSION */
+  ,
+  ["MFA_ENROLLMENT_NOT_FOUND"
+  /* MFA_ENROLLMENT_NOT_FOUND */
+  ]: "multi-factor-info-not-found"
+  /* MFA_INFO_NOT_FOUND */
+  ,
+  ["MISSING_MFA_ENROLLMENT_ID"
+  /* MISSING_MFA_ENROLLMENT_ID */
+  ]: "missing-multi-factor-info"
+  /* MISSING_MFA_INFO */
+  ,
+  ["MISSING_MFA_PENDING_CREDENTIAL"
+  /* MISSING_MFA_PENDING_CREDENTIAL */
+  ]: "missing-multi-factor-session"
+  /* MISSING_MFA_SESSION */
+  ,
+  ["SECOND_FACTOR_EXISTS"
+  /* SECOND_FACTOR_EXISTS */
+  ]: "second-factor-already-in-use"
+  /* SECOND_FACTOR_ALREADY_ENROLLED */
+  ,
+  ["SECOND_FACTOR_LIMIT_EXCEEDED"
+  /* SECOND_FACTOR_LIMIT_EXCEEDED */
+  ]: "maximum-second-factor-count-exceeded"
+  /* SECOND_FACTOR_LIMIT_EXCEEDED */
+  ,
+  // Blocking functions related errors.
+  ["BLOCKING_FUNCTION_ERROR_RESPONSE"
+  /* BLOCKING_FUNCTION_ERROR_RESPONSE */
+  ]: "internal-error"
+  /* INTERNAL_ERROR */
+
+};
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+const DEFAULT_API_TIMEOUT_MS = new Delay(30000, 60000);
+
+function _addTidIfNecessary(auth, request) {
+  if (auth.tenantId && !request.tenantId) {
+    return Object.assign(Object.assign({}, request), {
+      tenantId: auth.tenantId
+    });
+  }
+
+  return request;
+}
+
+async function _performApiRequest(auth, method, path, request, customErrorMap = {}) {
+  return _performFetchWithErrorHandling(auth, customErrorMap, () => {
+    let body = {};
+    let params = {};
+
+    if (request) {
+      if (method === "GET"
+      /* GET */
+      ) {
+        params = request;
+      } else {
+        body = {
+          body: JSON.stringify(request)
+        };
+      }
+    }
+
+    const query = (0, _util.querystring)(Object.assign({
+      key: auth.config.apiKey
+    }, params)).slice(1);
+    const headers = new (FetchProvider.headers())();
+    headers.set("Content-Type"
+    /* CONTENT_TYPE */
+    , 'application/json');
+    headers.set("X-Client-Version"
+    /* X_CLIENT_VERSION */
+    , auth._getSdkClientVersion());
+
+    if (auth.languageCode) {
+      headers.set("X-Firebase-Locale"
+      /* X_FIREBASE_LOCALE */
+      , auth.languageCode);
+    }
+
+    return FetchProvider.fetch()(_getFinalTarget(auth, auth.config.apiHost, path, query), Object.assign({
+      method,
+      headers,
+      referrerPolicy: 'no-referrer'
+    }, body));
+  });
+}
+
+async function _performFetchWithErrorHandling(auth, customErrorMap, fetchFn) {
+  auth._canInitEmulator = false;
+  const errorMap = Object.assign(Object.assign({}, SERVER_ERROR_MAP), customErrorMap);
+
+  try {
+    const networkTimeout = new NetworkTimeout(auth);
+    const response = await Promise.race([fetchFn(), networkTimeout.promise]); // If we've reached this point, the fetch succeeded and the networkTimeout
+    // didn't throw; clear the network timeout delay so that Node won't hang
+
+    networkTimeout.clearNetworkTimeout();
+    const json = await response.json();
+
+    if ('needConfirmation' in json) {
+      throw _makeTaggedError(auth, "account-exists-with-different-credential"
+      /* NEED_CONFIRMATION */
+      , json);
+    }
+
+    if (response.ok && !('errorMessage' in json)) {
+      return json;
+    } else {
+      const errorMessage = response.ok ? json.errorMessage : json.error.message;
+      const [serverErrorCode, serverErrorMessage] = errorMessage.split(' : ');
+
+      if (serverErrorCode === "FEDERATED_USER_ID_ALREADY_LINKED"
+      /* FEDERATED_USER_ID_ALREADY_LINKED */
+      ) {
+        throw _makeTaggedError(auth, "credential-already-in-use"
+        /* CREDENTIAL_ALREADY_IN_USE */
+        , json);
+      } else if (serverErrorCode === "EMAIL_EXISTS"
+      /* EMAIL_EXISTS */
+      ) {
+        throw _makeTaggedError(auth, "email-already-in-use"
+        /* EMAIL_EXISTS */
+        , json);
+      }
+
+      const authError = errorMap[serverErrorCode] || serverErrorCode.toLowerCase().replace(/[_\s]+/g, '-');
+
+      if (serverErrorMessage) {
+        throw _errorWithCustomMessage(auth, authError, serverErrorMessage);
+      } else {
+        _fail(auth, authError);
+      }
+    }
+  } catch (e) {
+    if (e instanceof _util.FirebaseError) {
+      throw e;
+    }
+
+    _fail(auth, "network-request-failed"
+    /* NETWORK_REQUEST_FAILED */
+    );
+  }
+}
+
+async function _performSignInRequest(auth, method, path, request, customErrorMap = {}) {
+  const serverResponse = await _performApiRequest(auth, method, path, request, customErrorMap);
+
+  if ('mfaPendingCredential' in serverResponse) {
+    _fail(auth, "multi-factor-auth-required"
+    /* MFA_REQUIRED */
+    , {
+      serverResponse
+    });
+  }
+
+  return serverResponse;
+}
+
+function _getFinalTarget(auth, host, path, query) {
+  const base = `${host}${path}?${query}`;
+
+  if (!auth.config.emulator) {
+    return `${auth.config.apiScheme}://${base}`;
+  }
+
+  return _emulatorUrl(auth.config, base);
+}
+
+class NetworkTimeout {
+  constructor(auth) {
+    this.auth = auth; // Node timers and browser timers are fundamentally incompatible, but we
+    // don't care about the value here
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+    this.timer = null;
+    this.promise = new Promise((_, reject) => {
+      this.timer = setTimeout(() => {
+        return reject(_createError(this.auth, "timeout"
+        /* TIMEOUT */
+        ));
+      }, DEFAULT_API_TIMEOUT_MS.get());
+    });
+  }
+
+  clearNetworkTimeout() {
+    clearTimeout(this.timer);
+  }
+
+}
+
+function _makeTaggedError(auth, code, response) {
+  const errorParams = {
+    appName: auth.name
+  };
+
+  if (response.email) {
+    errorParams.email = response.email;
+  }
+
+  if (response.phoneNumber) {
+    errorParams.phoneNumber = response.phoneNumber;
+  }
+
+  const error = _createError(auth, code, errorParams); // We know customData is defined on error because errorParams is defined
+
+
+  error.customData._tokenResponse = response;
+  return error;
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+async function deleteAccount(auth, request) {
+  return _performApiRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:delete"
+  /* DELETE_ACCOUNT */
+  , request);
+}
+
+async function deleteLinkedAccounts(auth, request) {
+  return _performApiRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:update"
+  /* SET_ACCOUNT_INFO */
+  , request);
+}
+
+async function getAccountInfo(auth, request) {
+  return _performApiRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:lookup"
+  /* GET_ACCOUNT_INFO */
+  , request);
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+function utcTimestampToDateString(utcTimestamp) {
+  if (!utcTimestamp) {
+    return undefined;
+  }
+
+  try {
+    // Convert to date object.
+    const date = new Date(Number(utcTimestamp)); // Test date is valid.
+
+    if (!isNaN(date.getTime())) {
+      // Convert to UTC date string.
+      return date.toUTCString();
+    }
+  } catch (e) {// Do nothing. undefined will be returned.
+  }
+
+  return undefined;
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Returns a JSON Web Token (JWT) used to identify the user to a Firebase service.
+ *
+ * @remarks
+ * Returns the current token if it has not expired or if it will not expire in the next five
+ * minutes. Otherwise, this will refresh the token and return a new one.
+ *
+ * @param user - The user.
+ * @param forceRefresh - Force refresh regardless of token expiration.
+ *
+ * @public
+ */
+
+
+function getIdToken(user, forceRefresh = false) {
+  return (0, _util.getModularInstance)(user).getIdToken(forceRefresh);
+}
+/**
+ * Returns a deserialized JSON Web Token (JWT) used to identitfy the user to a Firebase service.
+ *
+ * @remarks
+ * Returns the current token if it has not expired or if it will not expire in the next five
+ * minutes. Otherwise, this will refresh the token and return a new one.
+ *
+ * @param user - The user.
+ * @param forceRefresh - Force refresh regardless of token expiration.
+ *
+ * @public
+ */
+
+
+async function getIdTokenResult(user, forceRefresh = false) {
+  const userInternal = (0, _util.getModularInstance)(user);
+  const token = await userInternal.getIdToken(forceRefresh);
+
+  const claims = _parseToken(token);
+
+  _assert(claims && claims.exp && claims.auth_time && claims.iat, userInternal.auth, "internal-error"
+  /* INTERNAL_ERROR */
+  );
+
+  const firebase = typeof claims.firebase === 'object' ? claims.firebase : undefined;
+  const signInProvider = firebase === null || firebase === void 0 ? void 0 : firebase['sign_in_provider'];
+  return {
+    claims,
+    token,
+    authTime: utcTimestampToDateString(secondsStringToMilliseconds(claims.auth_time)),
+    issuedAtTime: utcTimestampToDateString(secondsStringToMilliseconds(claims.iat)),
+    expirationTime: utcTimestampToDateString(secondsStringToMilliseconds(claims.exp)),
+    signInProvider: signInProvider || null,
+    signInSecondFactor: (firebase === null || firebase === void 0 ? void 0 : firebase['sign_in_second_factor']) || null
+  };
+}
+
+function secondsStringToMilliseconds(seconds) {
+  return Number(seconds) * 1000;
+}
+
+function _parseToken(token) {
+  const [algorithm, payload, signature] = token.split('.');
+
+  if (algorithm === undefined || payload === undefined || signature === undefined) {
+    _logError('JWT malformed, contained fewer than 3 sections');
+
+    return null;
+  }
+
+  try {
+    const decoded = (0, _util.base64Decode)(payload);
+
+    if (!decoded) {
+      _logError('Failed to decode base64 JWT payload');
+
+      return null;
+    }
+
+    return JSON.parse(decoded);
+  } catch (e) {
+    _logError('Caught error parsing JWT payload as JSON', e);
+
+    return null;
+  }
+}
+/**
+ * Extract expiresIn TTL from a token by subtracting the expiration from the issuance.
+ */
+
+
+function _tokenExpiresIn(token) {
+  const parsedToken = _parseToken(token);
+
+  _assert(parsedToken, "internal-error"
+  /* INTERNAL_ERROR */
+  );
+
+  _assert(typeof parsedToken.exp !== 'undefined', "internal-error"
+  /* INTERNAL_ERROR */
+  );
+
+  _assert(typeof parsedToken.iat !== 'undefined', "internal-error"
+  /* INTERNAL_ERROR */
+  );
+
+  return Number(parsedToken.exp) - Number(parsedToken.iat);
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+async function _logoutIfInvalidated(user, promise, bypassAuthState = false) {
+  if (bypassAuthState) {
+    return promise;
+  }
+
+  try {
+    return await promise;
+  } catch (e) {
+    if (e instanceof _util.FirebaseError && isUserInvalidated(e)) {
+      if (user.auth.currentUser === user) {
+        await user.auth.signOut();
+      }
+    }
+
+    throw e;
+  }
+}
+
+function isUserInvalidated({
+  code
+}) {
+  return code === `auth/${"user-disabled"
+  /* USER_DISABLED */
+  }` || code === `auth/${"user-token-expired"
+  /* TOKEN_EXPIRED */
+  }`;
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+class ProactiveRefresh {
+  constructor(user) {
+    this.user = user;
+    this.isRunning = false; // Node timers and browser timers return fundamentally different types.
+    // We don't actually care what the value is but TS won't accept unknown and
+    // we can't cast properly in both environments.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+    this.timerId = null;
+    this.errorBackoff = 30000
+    /* RETRY_BACKOFF_MIN */
+    ;
+  }
+
+  _start() {
+    if (this.isRunning) {
+      return;
+    }
+
+    this.isRunning = true;
+    this.schedule();
+  }
+
+  _stop() {
+    if (!this.isRunning) {
+      return;
+    }
+
+    this.isRunning = false;
+
+    if (this.timerId !== null) {
+      clearTimeout(this.timerId);
+    }
+  }
+
+  getInterval(wasError) {
+    var _a;
+
+    if (wasError) {
+      const interval = this.errorBackoff;
+      this.errorBackoff = Math.min(this.errorBackoff * 2, 960000
+      /* RETRY_BACKOFF_MAX */
+      );
+      return interval;
+    } else {
+      // Reset the error backoff
+      this.errorBackoff = 30000
+      /* RETRY_BACKOFF_MIN */
+      ;
+      const expTime = (_a = this.user.stsTokenManager.expirationTime) !== null && _a !== void 0 ? _a : 0;
+      const interval = expTime - Date.now() - 300000
+      /* OFFSET */
+      ;
+      return Math.max(0, interval);
+    }
+  }
+
+  schedule(wasError = false) {
+    if (!this.isRunning) {
+      // Just in case...
+      return;
+    }
+
+    const interval = this.getInterval(wasError);
+    this.timerId = setTimeout(async () => {
+      await this.iteration();
+    }, interval);
+  }
+
+  async iteration() {
+    try {
+      await this.user.getIdToken(true);
+    } catch (e) {
+      // Only retry on network errors
+      if (e.code === `auth/${"network-request-failed"
+      /* NETWORK_REQUEST_FAILED */
+      }`) {
+        this.schedule(
+        /* wasError */
+        true);
+      }
+
+      return;
+    }
+
+    this.schedule();
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+class UserMetadata {
+  constructor(createdAt, lastLoginAt) {
+    this.createdAt = createdAt;
+    this.lastLoginAt = lastLoginAt;
+
+    this._initializeTime();
+  }
+
+  _initializeTime() {
+    this.lastSignInTime = utcTimestampToDateString(this.lastLoginAt);
+    this.creationTime = utcTimestampToDateString(this.createdAt);
+  }
+
+  _copy(metadata) {
+    this.createdAt = metadata.createdAt;
+    this.lastLoginAt = metadata.lastLoginAt;
+
+    this._initializeTime();
+  }
+
+  toJSON() {
+    return {
+      createdAt: this.createdAt,
+      lastLoginAt: this.lastLoginAt
+    };
+  }
+
+}
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+async function _reloadWithoutSaving(user) {
+  var _a;
+
+  const auth = user.auth;
+  const idToken = await user.getIdToken();
+  const response = await _logoutIfInvalidated(user, getAccountInfo(auth, {
+    idToken
+  }));
+
+  _assert(response === null || response === void 0 ? void 0 : response.users.length, auth, "internal-error"
+  /* INTERNAL_ERROR */
+  );
+
+  const coreAccount = response.users[0];
+
+  user._notifyReloadListener(coreAccount);
+
+  const newProviderData = ((_a = coreAccount.providerUserInfo) === null || _a === void 0 ? void 0 : _a.length) ? extractProviderData(coreAccount.providerUserInfo) : [];
+  const providerData = mergeProviderData(user.providerData, newProviderData); // Preserves the non-nonymous status of the stored user, even if no more
+  // credentials (federated or email/password) are linked to the user. If
+  // the user was previously anonymous, then use provider data to update.
+  // On the other hand, if it was not anonymous before, it should never be
+  // considered anonymous now.
+
+  const oldIsAnonymous = user.isAnonymous;
+  const newIsAnonymous = !(user.email && coreAccount.passwordHash) && !(providerData === null || providerData === void 0 ? void 0 : providerData.length);
+  const isAnonymous = !oldIsAnonymous ? false : newIsAnonymous;
+  const updates = {
+    uid: coreAccount.localId,
+    displayName: coreAccount.displayName || null,
+    photoURL: coreAccount.photoUrl || null,
+    email: coreAccount.email || null,
+    emailVerified: coreAccount.emailVerified || false,
+    phoneNumber: coreAccount.phoneNumber || null,
+    tenantId: coreAccount.tenantId || null,
+    providerData,
+    metadata: new UserMetadata(coreAccount.createdAt, coreAccount.lastLoginAt),
+    isAnonymous
+  };
+  Object.assign(user, updates);
+}
+/**
+ * Reloads user account data, if signed in.
+ *
+ * @param user - The user.
+ *
+ * @public
+ */
+
+
+async function reload(user) {
+  const userInternal = (0, _util.getModularInstance)(user);
+  await _reloadWithoutSaving(userInternal); // Even though the current user hasn't changed, update
+  // current user will trigger a persistence update w/ the
+  // new info.
+
+  await userInternal.auth._persistUserIfCurrent(userInternal);
+
+  userInternal.auth._notifyListenersIfCurrent(userInternal);
+}
+
+function mergeProviderData(original, newData) {
+  const deduped = original.filter(o => !newData.some(n => n.providerId === o.providerId));
+  return [...deduped, ...newData];
+}
+
+function extractProviderData(providers) {
+  return providers.map(_a => {
+    var {
+      providerId
+    } = _a,
+        provider = (0, _tslib.__rest)(_a, ["providerId"]);
+    return {
+      providerId,
+      uid: provider.rawId || '',
+      displayName: provider.displayName || null,
+      email: provider.email || null,
+      phoneNumber: provider.phoneNumber || null,
+      photoURL: provider.photoUrl || null
+    };
+  });
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+async function requestStsToken(auth, refreshToken) {
+  const response = await _performFetchWithErrorHandling(auth, {}, () => {
+    const body = (0, _util.querystring)({
+      'grant_type': 'refresh_token',
+      'refresh_token': refreshToken
+    }).slice(1);
+    const {
+      tokenApiHost,
+      apiKey
+    } = auth.config;
+
+    const url = _getFinalTarget(auth, tokenApiHost, "/v1/token"
+    /* TOKEN */
+    , `key=${apiKey}`);
+
+    return FetchProvider.fetch()(url, {
+      method: "POST"
+      /* POST */
+      ,
+      headers: {
+        'X-Client-Version': auth._getSdkClientVersion(),
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body
+    });
+  }); // The response comes back in snake_case. Convert to camel:
+
+  return {
+    accessToken: response.access_token,
+    expiresIn: response.expires_in,
+    refreshToken: response.refresh_token
+  };
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * We need to mark this class as internal explicitly to exclude it in the public typings, because
+ * it references AuthInternal which has a circular dependency with UserInternal.
+ *
+ * @internal
+ */
+
+
+class StsTokenManager {
+  constructor() {
+    this.refreshToken = null;
+    this.accessToken = null;
+    this.expirationTime = null;
+  }
+
+  get isExpired() {
+    return !this.expirationTime || Date.now() > this.expirationTime - 30000
+    /* TOKEN_REFRESH */
+    ;
+  }
+
+  updateFromServerResponse(response) {
+    _assert(response.idToken, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    _assert(typeof response.idToken !== 'undefined', "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    _assert(typeof response.refreshToken !== 'undefined', "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    const expiresIn = 'expiresIn' in response && typeof response.expiresIn !== 'undefined' ? Number(response.expiresIn) : _tokenExpiresIn(response.idToken);
+    this.updateTokensAndExpiration(response.idToken, response.refreshToken, expiresIn);
+  }
+
+  async getToken(auth, forceRefresh = false) {
+    _assert(!this.accessToken || this.refreshToken, auth, "user-token-expired"
+    /* TOKEN_EXPIRED */
+    );
+
+    if (!forceRefresh && this.accessToken && !this.isExpired) {
+      return this.accessToken;
+    }
+
+    if (this.refreshToken) {
+      await this.refresh(auth, this.refreshToken);
+      return this.accessToken;
+    }
+
+    return null;
+  }
+
+  clearRefreshToken() {
+    this.refreshToken = null;
+  }
+
+  async refresh(auth, oldToken) {
+    const {
+      accessToken,
+      refreshToken,
+      expiresIn
+    } = await requestStsToken(auth, oldToken);
+    this.updateTokensAndExpiration(accessToken, refreshToken, Number(expiresIn));
+  }
+
+  updateTokensAndExpiration(accessToken, refreshToken, expiresInSec) {
+    this.refreshToken = refreshToken || null;
+    this.accessToken = accessToken || null;
+    this.expirationTime = Date.now() + expiresInSec * 1000;
+  }
+
+  static fromJSON(appName, object) {
+    const {
+      refreshToken,
+      accessToken,
+      expirationTime
+    } = object;
+    const manager = new StsTokenManager();
+
+    if (refreshToken) {
+      _assert(typeof refreshToken === 'string', "internal-error"
+      /* INTERNAL_ERROR */
+      , {
+        appName
+      });
+
+      manager.refreshToken = refreshToken;
+    }
+
+    if (accessToken) {
+      _assert(typeof accessToken === 'string', "internal-error"
+      /* INTERNAL_ERROR */
+      , {
+        appName
+      });
+
+      manager.accessToken = accessToken;
+    }
+
+    if (expirationTime) {
+      _assert(typeof expirationTime === 'number', "internal-error"
+      /* INTERNAL_ERROR */
+      , {
+        appName
+      });
+
+      manager.expirationTime = expirationTime;
+    }
+
+    return manager;
+  }
+
+  toJSON() {
+    return {
+      refreshToken: this.refreshToken,
+      accessToken: this.accessToken,
+      expirationTime: this.expirationTime
+    };
+  }
+
+  _assign(stsTokenManager) {
+    this.accessToken = stsTokenManager.accessToken;
+    this.refreshToken = stsTokenManager.refreshToken;
+    this.expirationTime = stsTokenManager.expirationTime;
+  }
+
+  _clone() {
+    return Object.assign(new StsTokenManager(), this.toJSON());
+  }
+
+  _performRefresh() {
+    return debugFail('not implemented');
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+function assertStringOrUndefined(assertion, appName) {
+  _assert(typeof assertion === 'string' || typeof assertion === 'undefined', "internal-error"
+  /* INTERNAL_ERROR */
+  , {
+    appName
+  });
+}
+
+class UserImpl {
+  constructor(_a) {
+    var {
+      uid,
+      auth,
+      stsTokenManager
+    } = _a,
+        opt = (0, _tslib.__rest)(_a, ["uid", "auth", "stsTokenManager"]); // For the user object, provider is always Firebase.
+
+    this.providerId = "firebase"
+    /* FIREBASE */
+    ;
+    this.emailVerified = false;
+    this.isAnonymous = false;
+    this.tenantId = null;
+    this.providerData = [];
+    this.proactiveRefresh = new ProactiveRefresh(this);
+    this.reloadUserInfo = null;
+    this.reloadListener = null;
+    this.uid = uid;
+    this.auth = auth;
+    this.stsTokenManager = stsTokenManager;
+    this.accessToken = stsTokenManager.accessToken;
+    this.displayName = opt.displayName || null;
+    this.email = opt.email || null;
+    this.phoneNumber = opt.phoneNumber || null;
+    this.photoURL = opt.photoURL || null;
+    this.isAnonymous = opt.isAnonymous || false;
+    this.metadata = new UserMetadata(opt.createdAt || undefined, opt.lastLoginAt || undefined);
+  }
+
+  async getIdToken(forceRefresh) {
+    const accessToken = await _logoutIfInvalidated(this, this.stsTokenManager.getToken(this.auth, forceRefresh));
+
+    _assert(accessToken, this.auth, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    if (this.accessToken !== accessToken) {
+      this.accessToken = accessToken;
+      await this.auth._persistUserIfCurrent(this);
+
+      this.auth._notifyListenersIfCurrent(this);
+    }
+
+    return accessToken;
+  }
+
+  getIdTokenResult(forceRefresh) {
+    return getIdTokenResult(this, forceRefresh);
+  }
+
+  reload() {
+    return reload(this);
+  }
+
+  _assign(user) {
+    if (this === user) {
+      return;
+    }
+
+    _assert(this.uid === user.uid, this.auth, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    this.displayName = user.displayName;
+    this.photoURL = user.photoURL;
+    this.email = user.email;
+    this.emailVerified = user.emailVerified;
+    this.phoneNumber = user.phoneNumber;
+    this.isAnonymous = user.isAnonymous;
+    this.tenantId = user.tenantId;
+    this.providerData = user.providerData.map(userInfo => Object.assign({}, userInfo));
+
+    this.metadata._copy(user.metadata);
+
+    this.stsTokenManager._assign(user.stsTokenManager);
+  }
+
+  _clone(auth) {
+    return new UserImpl(Object.assign(Object.assign({}, this), {
+      auth,
+      stsTokenManager: this.stsTokenManager._clone()
+    }));
+  }
+
+  _onReload(callback) {
+    // There should only ever be one listener, and that is a single instance of MultiFactorUser
+    _assert(!this.reloadListener, this.auth, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    this.reloadListener = callback;
+
+    if (this.reloadUserInfo) {
+      this._notifyReloadListener(this.reloadUserInfo);
+
+      this.reloadUserInfo = null;
+    }
+  }
+
+  _notifyReloadListener(userInfo) {
+    if (this.reloadListener) {
+      this.reloadListener(userInfo);
+    } else {
+      // If no listener is subscribed yet, save the result so it's available when they do subscribe
+      this.reloadUserInfo = userInfo;
+    }
+  }
+
+  _startProactiveRefresh() {
+    this.proactiveRefresh._start();
+  }
+
+  _stopProactiveRefresh() {
+    this.proactiveRefresh._stop();
+  }
+
+  async _updateTokensIfNecessary(response, reload = false) {
+    let tokensRefreshed = false;
+
+    if (response.idToken && response.idToken !== this.stsTokenManager.accessToken) {
+      this.stsTokenManager.updateFromServerResponse(response);
+      tokensRefreshed = true;
+    }
+
+    if (reload) {
+      await _reloadWithoutSaving(this);
+    }
+
+    await this.auth._persistUserIfCurrent(this);
+
+    if (tokensRefreshed) {
+      this.auth._notifyListenersIfCurrent(this);
+    }
+  }
+
+  async delete() {
+    const idToken = await this.getIdToken();
+    await _logoutIfInvalidated(this, deleteAccount(this.auth, {
+      idToken
+    }));
+    this.stsTokenManager.clearRefreshToken(); // TODO: Determine if cancellable-promises are necessary to use in this class so that delete()
+    //       cancels pending actions...
+
+    return this.auth.signOut();
+  }
+
+  toJSON() {
+    return Object.assign(Object.assign({
+      uid: this.uid,
+      email: this.email || undefined,
+      emailVerified: this.emailVerified,
+      displayName: this.displayName || undefined,
+      isAnonymous: this.isAnonymous,
+      photoURL: this.photoURL || undefined,
+      phoneNumber: this.phoneNumber || undefined,
+      tenantId: this.tenantId || undefined,
+      providerData: this.providerData.map(userInfo => Object.assign({}, userInfo)),
+      stsTokenManager: this.stsTokenManager.toJSON(),
+      // Redirect event ID must be maintained in case there is a pending
+      // redirect event.
+      _redirectEventId: this._redirectEventId
+    }, this.metadata.toJSON()), {
+      // Required for compatibility with the legacy SDK (go/firebase-auth-sdk-persistence-parsing):
+      apiKey: this.auth.config.apiKey,
+      appName: this.auth.name
+    });
+  }
+
+  get refreshToken() {
+    return this.stsTokenManager.refreshToken || '';
+  }
+
+  static _fromJSON(auth, object) {
+    var _a, _b, _c, _d, _e, _f, _g, _h;
+
+    const displayName = (_a = object.displayName) !== null && _a !== void 0 ? _a : undefined;
+    const email = (_b = object.email) !== null && _b !== void 0 ? _b : undefined;
+    const phoneNumber = (_c = object.phoneNumber) !== null && _c !== void 0 ? _c : undefined;
+    const photoURL = (_d = object.photoURL) !== null && _d !== void 0 ? _d : undefined;
+    const tenantId = (_e = object.tenantId) !== null && _e !== void 0 ? _e : undefined;
+
+    const _redirectEventId = (_f = object._redirectEventId) !== null && _f !== void 0 ? _f : undefined;
+
+    const createdAt = (_g = object.createdAt) !== null && _g !== void 0 ? _g : undefined;
+    const lastLoginAt = (_h = object.lastLoginAt) !== null && _h !== void 0 ? _h : undefined;
+    const {
+      uid,
+      emailVerified,
+      isAnonymous,
+      providerData,
+      stsTokenManager: plainObjectTokenManager
+    } = object;
+
+    _assert(uid && plainObjectTokenManager, auth, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    const stsTokenManager = StsTokenManager.fromJSON(this.name, plainObjectTokenManager);
+
+    _assert(typeof uid === 'string', auth, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    assertStringOrUndefined(displayName, auth.name);
+    assertStringOrUndefined(email, auth.name);
+
+    _assert(typeof emailVerified === 'boolean', auth, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    _assert(typeof isAnonymous === 'boolean', auth, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    assertStringOrUndefined(phoneNumber, auth.name);
+    assertStringOrUndefined(photoURL, auth.name);
+    assertStringOrUndefined(tenantId, auth.name);
+    assertStringOrUndefined(_redirectEventId, auth.name);
+    assertStringOrUndefined(createdAt, auth.name);
+    assertStringOrUndefined(lastLoginAt, auth.name);
+    const user = new UserImpl({
+      uid,
+      auth,
+      email,
+      emailVerified,
+      displayName,
+      isAnonymous,
+      photoURL,
+      phoneNumber,
+      tenantId,
+      stsTokenManager,
+      createdAt,
+      lastLoginAt
+    });
+
+    if (providerData && Array.isArray(providerData)) {
+      user.providerData = providerData.map(userInfo => Object.assign({}, userInfo));
+    }
+
+    if (_redirectEventId) {
+      user._redirectEventId = _redirectEventId;
+    }
+
+    return user;
+  }
+  /**
+   * Initialize a User from an idToken server response
+   * @param auth
+   * @param idTokenResponse
+   */
+
+
+  static async _fromIdTokenResponse(auth, idTokenResponse, isAnonymous = false) {
+    const stsTokenManager = new StsTokenManager();
+    stsTokenManager.updateFromServerResponse(idTokenResponse); // Initialize the Firebase Auth user.
+
+    const user = new UserImpl({
+      uid: idTokenResponse.localId,
+      auth,
+      stsTokenManager,
+      isAnonymous
+    }); // Updates the user info and data and resolves with a user instance.
+
+    await _reloadWithoutSaving(user);
+    return user;
+  }
+
+}
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+exports.aD = UserImpl;
+
+class InMemoryPersistence {
+  constructor() {
+    this.type = "NONE"
+    /* NONE */
+    ;
+    this.storage = {};
+  }
+
+  async _isAvailable() {
+    return true;
+  }
+
+  async _set(key, value) {
+    this.storage[key] = value;
+  }
+
+  async _get(key) {
+    const value = this.storage[key];
+    return value === undefined ? null : value;
+  }
+
+  async _remove(key) {
+    delete this.storage[key];
+  }
+
+  _addListener(_key, _listener) {
+    // Listeners are not supported for in-memory storage since it cannot be shared across windows/workers
+    return;
+  }
+
+  _removeListener(_key, _listener) {
+    // Listeners are not supported for in-memory storage since it cannot be shared across windows/workers
+    return;
+  }
+
+}
+
+InMemoryPersistence.type = 'NONE';
+/**
+ * An implementation of {@link Persistence} of type 'NONE'.
+ *
+ * @public
+ */
+
+const inMemoryPersistence = InMemoryPersistence;
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+exports.K = inMemoryPersistence;
+
+function _persistenceKeyName(key, apiKey, appName) {
+  return `${"firebase"
+  /* PERSISTENCE */
+  }:${key}:${apiKey}:${appName}`;
+}
+
+class PersistenceUserManager {
+  constructor(persistence, auth, userKey) {
+    this.persistence = persistence;
+    this.auth = auth;
+    this.userKey = userKey;
+    const {
+      config,
+      name
+    } = this.auth;
+    this.fullUserKey = _persistenceKeyName(this.userKey, config.apiKey, name);
+    this.fullPersistenceKey = _persistenceKeyName("persistence"
+    /* PERSISTENCE_USER */
+    , config.apiKey, name);
+    this.boundEventHandler = auth._onStorageEvent.bind(auth);
+
+    this.persistence._addListener(this.fullUserKey, this.boundEventHandler);
+  }
+
+  setCurrentUser(user) {
+    return this.persistence._set(this.fullUserKey, user.toJSON());
+  }
+
+  async getCurrentUser() {
+    const blob = await this.persistence._get(this.fullUserKey);
+    return blob ? UserImpl._fromJSON(this.auth, blob) : null;
+  }
+
+  removeCurrentUser() {
+    return this.persistence._remove(this.fullUserKey);
+  }
+
+  savePersistenceForRedirect() {
+    return this.persistence._set(this.fullPersistenceKey, this.persistence.type);
+  }
+
+  async setPersistence(newPersistence) {
+    if (this.persistence === newPersistence) {
+      return;
+    }
+
+    const currentUser = await this.getCurrentUser();
+    await this.removeCurrentUser();
+    this.persistence = newPersistence;
+
+    if (currentUser) {
+      return this.setCurrentUser(currentUser);
+    }
+  }
+
+  delete() {
+    this.persistence._removeListener(this.fullUserKey, this.boundEventHandler);
+  }
+
+  static async create(auth, persistenceHierarchy, userKey = "authUser"
+  /* AUTH_USER */
+  ) {
+    if (!persistenceHierarchy.length) {
+      return new PersistenceUserManager(_getInstance(inMemoryPersistence), auth, userKey);
+    } // Eliminate any persistences that are not available
+
+
+    const availablePersistences = (await Promise.all(persistenceHierarchy.map(async persistence => {
+      if (await persistence._isAvailable()) {
+        return persistence;
+      }
+
+      return undefined;
+    }))).filter(persistence => persistence); // Fall back to the first persistence listed, or in memory if none available
+
+    let selectedPersistence = availablePersistences[0] || _getInstance(inMemoryPersistence);
+
+    const key = _persistenceKeyName(userKey, auth.config.apiKey, auth.name); // Pull out the existing user, setting the chosen persistence to that
+    // persistence if the user exists.
+
+
+    let userToMigrate = null; // Note, here we check for a user in _all_ persistences, not just the
+    // ones deemed available. If we can migrate a user out of a broken
+    // persistence, we will (but only if that persistence supports migration).
+
+    for (const persistence of persistenceHierarchy) {
+      try {
+        const blob = await persistence._get(key);
+
+        if (blob) {
+          const user = UserImpl._fromJSON(auth, blob); // throws for unparsable blob (wrong format)
+
+
+          if (persistence !== selectedPersistence) {
+            userToMigrate = user;
+          }
+
+          selectedPersistence = persistence;
+          break;
+        }
+      } catch (_a) {}
+    } // If we find the user in a persistence that does support migration, use
+    // that migration path (of only persistences that support migration)
+
+
+    const migrationHierarchy = availablePersistences.filter(p => p._shouldAllowMigration); // If the persistence does _not_ allow migration, just finish off here
+
+    if (!selectedPersistence._shouldAllowMigration || !migrationHierarchy.length) {
+      return new PersistenceUserManager(selectedPersistence, auth, userKey);
+    }
+
+    selectedPersistence = migrationHierarchy[0];
+
+    if (userToMigrate) {
+      // This normally shouldn't throw since chosenPersistence.isAvailable() is true, but if it does
+      // we'll just let it bubble to surface the error.
+      await selectedPersistence._set(key, userToMigrate.toJSON());
+    } // Attempt to clear the key in other persistences but ignore errors. This helps prevent issues
+    // such as users getting stuck with a previous account after signing out and refreshing the tab.
+
+
+    await Promise.all(persistenceHierarchy.map(async persistence => {
+      if (persistence !== selectedPersistence) {
+        try {
+          await persistence._remove(key);
+        } catch (_a) {}
+      }
+    }));
+    return new PersistenceUserManager(selectedPersistence, auth, userKey);
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Determine the browser for the purposes of reporting usage to the API
+ */
+
+
+function _getBrowserName(userAgent) {
+  const ua = userAgent.toLowerCase();
+
+  if (ua.includes('opera/') || ua.includes('opr/') || ua.includes('opios/')) {
+    return "Opera"
+    /* OPERA */
+    ;
+  } else if (_isIEMobile(ua)) {
+    // Windows phone IEMobile browser.
+    return "IEMobile"
+    /* IEMOBILE */
+    ;
+  } else if (ua.includes('msie') || ua.includes('trident/')) {
+    return "IE"
+    /* IE */
+    ;
+  } else if (ua.includes('edge/')) {
+    return "Edge"
+    /* EDGE */
+    ;
+  } else if (_isFirefox(ua)) {
+    return "Firefox"
+    /* FIREFOX */
+    ;
+  } else if (ua.includes('silk/')) {
+    return "Silk"
+    /* SILK */
+    ;
+  } else if (_isBlackBerry(ua)) {
+    // Blackberry browser.
+    return "Blackberry"
+    /* BLACKBERRY */
+    ;
+  } else if (_isWebOS(ua)) {
+    // WebOS default browser.
+    return "Webos"
+    /* WEBOS */
+    ;
+  } else if (_isSafari(ua)) {
+    return "Safari"
+    /* SAFARI */
+    ;
+  } else if ((ua.includes('chrome/') || _isChromeIOS(ua)) && !ua.includes('edge/')) {
+    return "Chrome"
+    /* CHROME */
+    ;
+  } else if (_isAndroid(ua)) {
+    // Android stock browser.
+    return "Android"
+    /* ANDROID */
+    ;
+  } else {
+    // Most modern browsers have name/version at end of user agent string.
+    const re = /([a-zA-Z\d\.]+)\/[a-zA-Z\d\.]*$/;
+    const matches = userAgent.match(re);
+
+    if ((matches === null || matches === void 0 ? void 0 : matches.length) === 2) {
+      return matches[1];
+    }
+  }
+
+  return "Other"
+  /* OTHER */
+  ;
+}
+
+function _isFirefox(ua = (0, _util.getUA)()) {
+  return /firefox\//i.test(ua);
+}
+
+function _isSafari(userAgent = (0, _util.getUA)()) {
+  const ua = userAgent.toLowerCase();
+  return ua.includes('safari/') && !ua.includes('chrome/') && !ua.includes('crios/') && !ua.includes('android');
+}
+
+function _isChromeIOS(ua = (0, _util.getUA)()) {
+  return /crios\//i.test(ua);
+}
+
+function _isIEMobile(ua = (0, _util.getUA)()) {
+  return /iemobile/i.test(ua);
+}
+
+function _isAndroid(ua = (0, _util.getUA)()) {
+  return /android/i.test(ua);
+}
+
+function _isBlackBerry(ua = (0, _util.getUA)()) {
+  return /blackberry/i.test(ua);
+}
+
+function _isWebOS(ua = (0, _util.getUA)()) {
+  return /webos/i.test(ua);
+}
+
+function _isIOS(ua = (0, _util.getUA)()) {
+  return /iphone|ipad|ipod/i.test(ua);
+}
+
+function _isIOS7Or8(ua = (0, _util.getUA)()) {
+  return /(iPad|iPhone|iPod).*OS 7_\d/i.test(ua) || /(iPad|iPhone|iPod).*OS 8_\d/i.test(ua);
+}
+
+function _isIOSStandalone(ua = (0, _util.getUA)()) {
+  var _a;
+
+  return _isIOS(ua) && !!((_a = window.navigator) === null || _a === void 0 ? void 0 : _a.standalone);
+}
+
+function _isIE10() {
+  return (0, _util.isIE)() && document.documentMode === 10;
+}
+
+function _isMobileBrowser(ua = (0, _util.getUA)()) {
+  // TODO: implement getBrowserName equivalent for OS.
+  return _isIOS(ua) || _isAndroid(ua) || _isWebOS(ua) || _isBlackBerry(ua) || /windows phone/i.test(ua) || _isIEMobile(ua);
+}
+
+function _isIframe() {
+  try {
+    // Check that the current window is not the top window.
+    // If so, return true.
+    return !!(window && window !== window.top);
+  } catch (e) {
+    return false;
+  }
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * Determine the SDK version string
+ */
+
+
+function _getClientVersion(clientPlatform, frameworks = []) {
+  let reportedPlatform;
+
+  switch (clientPlatform) {
+    case "Browser"
+    /* BROWSER */
+    :
+      // In a browser environment, report the browser name.
+      reportedPlatform = _getBrowserName((0, _util.getUA)());
+      break;
+
+    case "Worker"
+    /* WORKER */
+    :
+      // Technically a worker runs from a browser but we need to differentiate a
+      // worker from a browser.
+      // For example: Chrome-Worker/JsCore/4.9.1/FirebaseCore-web.
+      reportedPlatform = `${_getBrowserName((0, _util.getUA)())}-${clientPlatform}`;
+      break;
+
+    default:
+      reportedPlatform = clientPlatform;
+  }
+
+  const reportedFrameworks = frameworks.length ? frameworks.join(',') : 'FirebaseCore-web';
+  /* default value if no other framework is used */
+
+  return `${reportedPlatform}/${"JsCore"
+  /* CORE */
+  }/${_app.SDK_VERSION}/${reportedFrameworks}`;
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+class AuthImpl {
+  constructor(app, config) {
+    this.app = app;
+    this.config = config;
+    this.currentUser = null;
+    this.emulatorConfig = null;
+    this.operations = Promise.resolve();
+    this.authStateSubscription = new Subscription(this);
+    this.idTokenSubscription = new Subscription(this);
+    this.redirectUser = null;
+    this.isProactiveRefreshEnabled = false; // Any network calls will set this to true and prevent subsequent emulator
+    // initialization
+
+    this._canInitEmulator = true;
+    this._isInitialized = false;
+    this._deleted = false;
+    this._initializationPromise = null;
+    this._popupRedirectResolver = null;
+    this._errorFactory = _DEFAULT_AUTH_ERROR_FACTORY; // Tracks the last notified UID for state change listeners to prevent
+    // repeated calls to the callbacks. Undefined means it's never been
+    // called, whereas null means it's been called with a signed out user
+
+    this.lastNotifiedUid = undefined;
+    this.languageCode = null;
+    this.tenantId = null;
+    this.settings = {
+      appVerificationDisabledForTesting: false
+    };
+    this.frameworks = [];
+    this.name = app.name;
+    this.clientVersion = config.sdkClientVersion;
+  }
+
+  _initializeWithPersistence(persistenceHierarchy, popupRedirectResolver) {
+    if (popupRedirectResolver) {
+      this._popupRedirectResolver = _getInstance(popupRedirectResolver);
+    } // Have to check for app deletion throughout initialization (after each
+    // promise resolution)
+
+
+    this._initializationPromise = this.queue(async () => {
+      var _a;
+
+      if (this._deleted) {
+        return;
+      }
+
+      this.persistenceManager = await PersistenceUserManager.create(this, persistenceHierarchy);
+
+      if (this._deleted) {
+        return;
+      } // Initialize the resolver early if necessary (only applicable to web:
+      // this will cause the iframe to load immediately in certain cases)
+
+
+      if ((_a = this._popupRedirectResolver) === null || _a === void 0 ? void 0 : _a._shouldInitProactively) {
+        await this._popupRedirectResolver._initialize(this);
+      }
+
+      await this.initializeCurrentUser(popupRedirectResolver);
+
+      if (this._deleted) {
+        return;
+      }
+
+      this._isInitialized = true;
+    });
+    return this._initializationPromise;
+  }
+  /**
+   * If the persistence is changed in another window, the user manager will let us know
+   */
+
+
+  async _onStorageEvent() {
+    if (this._deleted) {
+      return;
+    }
+
+    const user = await this.assertedPersistence.getCurrentUser();
+
+    if (!this.currentUser && !user) {
+      // No change, do nothing (was signed out and remained signed out).
+      return;
+    } // If the same user is to be synchronized.
+
+
+    if (this.currentUser && user && this.currentUser.uid === user.uid) {
+      // Data update, simply copy data changes.
+      this._currentUser._assign(user); // If tokens changed from previous user tokens, this will trigger
+      // notifyAuthListeners_.
+
+
+      await this.currentUser.getIdToken();
+      return;
+    } // Update current Auth state. Either a new login or logout.
+
+
+    await this._updateCurrentUser(user);
+  }
+
+  async initializeCurrentUser(popupRedirectResolver) {
+    var _a; // First check to see if we have a pending redirect event.
+
+
+    let storedUser = await this.assertedPersistence.getCurrentUser();
+
+    if (popupRedirectResolver && this.config.authDomain) {
+      await this.getOrInitRedirectPersistenceManager();
+      const redirectUserEventId = (_a = this.redirectUser) === null || _a === void 0 ? void 0 : _a._redirectEventId;
+      const storedUserEventId = storedUser === null || storedUser === void 0 ? void 0 : storedUser._redirectEventId;
+      const result = await this.tryRedirectSignIn(popupRedirectResolver); // If the stored user (i.e. the old "currentUser") has a redirectId that
+      // matches the redirect user, then we want to initially sign in with the
+      // new user object from result.
+      // TODO(samgho): More thoroughly test all of this
+
+      if ((!redirectUserEventId || redirectUserEventId === storedUserEventId) && (result === null || result === void 0 ? void 0 : result.user)) {
+        storedUser = result.user;
+      }
+    } // If no user in persistence, there is no current user. Set to null.
+
+
+    if (!storedUser) {
+      return this.directlySetCurrentUser(null);
+    }
+
+    if (!storedUser._redirectEventId) {
+      // This isn't a redirect user, we can reload and bail
+      // This will also catch the redirected user, if available, as that method
+      // strips the _redirectEventId
+      return this.reloadAndSetCurrentUserOrClear(storedUser);
+    }
+
+    _assert(this._popupRedirectResolver, this, "argument-error"
+    /* ARGUMENT_ERROR */
+    );
+
+    await this.getOrInitRedirectPersistenceManager(); // If the redirect user's event ID matches the current user's event ID,
+    // DO NOT reload the current user, otherwise they'll be cleared from storage.
+    // This is important for the reauthenticateWithRedirect() flow.
+
+    if (this.redirectUser && this.redirectUser._redirectEventId === storedUser._redirectEventId) {
+      return this.directlySetCurrentUser(storedUser);
+    }
+
+    return this.reloadAndSetCurrentUserOrClear(storedUser);
+  }
+
+  async tryRedirectSignIn(redirectResolver) {
+    // The redirect user needs to be checked (and signed in if available)
+    // during auth initialization. All of the normal sign in and link/reauth
+    // flows call back into auth and push things onto the promise queue. We
+    // need to await the result of the redirect sign in *inside the promise
+    // queue*. This presents a problem: we run into deadlock. See:
+    //    ┌> [Initialization] ─────┐
+    //    ┌> [<other queue tasks>] │
+    //    └─ [getRedirectResult] <─┘
+    //    where [] are tasks on the queue and arrows denote awaits
+    // Initialization will never complete because it's waiting on something
+    // that's waiting for initialization to complete!
+    //
+    // Instead, this method calls getRedirectResult() (stored in
+    // _completeRedirectFn) with an optional parameter that instructs all of
+    // the underlying auth operations to skip anything that mutates auth state.
+    let result = null;
+
+    try {
+      // We know this._popupRedirectResolver is set since redirectResolver
+      // is passed in. The _completeRedirectFn expects the unwrapped extern.
+      result = await this._popupRedirectResolver._completeRedirectFn(this, redirectResolver, true);
+    } catch (e) {
+      // Swallow any errors here; the code can retrieve them in
+      // getRedirectResult().
+      await this._setRedirectUser(null);
+    }
+
+    return result;
+  }
+
+  async reloadAndSetCurrentUserOrClear(user) {
+    try {
+      await _reloadWithoutSaving(user);
+    } catch (e) {
+      if (e.code !== `auth/${"network-request-failed"
+      /* NETWORK_REQUEST_FAILED */
+      }`) {
+        // Something's wrong with the user's token. Log them out and remove
+        // them from storage
+        return this.directlySetCurrentUser(null);
+      }
+    }
+
+    return this.directlySetCurrentUser(user);
+  }
+
+  useDeviceLanguage() {
+    this.languageCode = _getUserLanguage();
+  }
+
+  async _delete() {
+    this._deleted = true;
+  }
+
+  async updateCurrentUser(userExtern) {
+    // The public updateCurrentUser method needs to make a copy of the user,
+    // and also check that the project matches
+    const user = userExtern ? (0, _util.getModularInstance)(userExtern) : null;
+
+    if (user) {
+      _assert(user.auth.config.apiKey === this.config.apiKey, this, "invalid-user-token"
+      /* INVALID_AUTH */
+      );
+    }
+
+    return this._updateCurrentUser(user && user._clone(this));
+  }
+
+  async _updateCurrentUser(user) {
+    if (this._deleted) {
+      return;
+    }
+
+    if (user) {
+      _assert(this.tenantId === user.tenantId, this, "tenant-id-mismatch"
+      /* TENANT_ID_MISMATCH */
+      );
+    }
+
+    return this.queue(async () => {
+      await this.directlySetCurrentUser(user);
+      this.notifyAuthListeners();
+    });
+  }
+
+  async signOut() {
+    // Clear the redirect user when signOut is called
+    if (this.redirectPersistenceManager || this._popupRedirectResolver) {
+      await this._setRedirectUser(null);
+    }
+
+    return this._updateCurrentUser(null);
+  }
+
+  setPersistence(persistence) {
+    return this.queue(async () => {
+      await this.assertedPersistence.setPersistence(_getInstance(persistence));
+    });
+  }
+
+  _getPersistence() {
+    return this.assertedPersistence.persistence.type;
+  }
+
+  _updateErrorMap(errorMap) {
+    this._errorFactory = new _util.ErrorFactory('auth', 'Firebase', errorMap());
+  }
+
+  onAuthStateChanged(nextOrObserver, error, completed) {
+    return this.registerStateListener(this.authStateSubscription, nextOrObserver, error, completed);
+  }
+
+  onIdTokenChanged(nextOrObserver, error, completed) {
+    return this.registerStateListener(this.idTokenSubscription, nextOrObserver, error, completed);
+  }
+
+  toJSON() {
+    var _a;
+
+    return {
+      apiKey: this.config.apiKey,
+      authDomain: this.config.authDomain,
+      appName: this.name,
+      currentUser: (_a = this._currentUser) === null || _a === void 0 ? void 0 : _a.toJSON()
+    };
+  }
+
+  async _setRedirectUser(user, popupRedirectResolver) {
+    const redirectManager = await this.getOrInitRedirectPersistenceManager(popupRedirectResolver);
+    return user === null ? redirectManager.removeCurrentUser() : redirectManager.setCurrentUser(user);
+  }
+
+  async getOrInitRedirectPersistenceManager(popupRedirectResolver) {
+    if (!this.redirectPersistenceManager) {
+      const resolver = popupRedirectResolver && _getInstance(popupRedirectResolver) || this._popupRedirectResolver;
+
+      _assert(resolver, this, "argument-error"
+      /* ARGUMENT_ERROR */
+      );
+
+      this.redirectPersistenceManager = await PersistenceUserManager.create(this, [_getInstance(resolver._redirectPersistence)], "redirectUser"
+      /* REDIRECT_USER */
+      );
+      this.redirectUser = await this.redirectPersistenceManager.getCurrentUser();
+    }
+
+    return this.redirectPersistenceManager;
+  }
+
+  async _redirectUserForId(id) {
+    var _a, _b; // Make sure we've cleared any pending persistence actions if we're not in
+    // the initializer
+
+
+    if (this._isInitialized) {
+      await this.queue(async () => {});
+    }
+
+    if (((_a = this._currentUser) === null || _a === void 0 ? void 0 : _a._redirectEventId) === id) {
+      return this._currentUser;
+    }
+
+    if (((_b = this.redirectUser) === null || _b === void 0 ? void 0 : _b._redirectEventId) === id) {
+      return this.redirectUser;
+    }
+
+    return null;
+  }
+
+  async _persistUserIfCurrent(user) {
+    if (user === this.currentUser) {
+      return this.queue(async () => this.directlySetCurrentUser(user));
+    }
+  }
+  /** Notifies listeners only if the user is current */
+
+
+  _notifyListenersIfCurrent(user) {
+    if (user === this.currentUser) {
+      this.notifyAuthListeners();
+    }
+  }
+
+  _key() {
+    return `${this.config.authDomain}:${this.config.apiKey}:${this.name}`;
+  }
+
+  _startProactiveRefresh() {
+    this.isProactiveRefreshEnabled = true;
+
+    if (this.currentUser) {
+      this._currentUser._startProactiveRefresh();
+    }
+  }
+
+  _stopProactiveRefresh() {
+    this.isProactiveRefreshEnabled = false;
+
+    if (this.currentUser) {
+      this._currentUser._stopProactiveRefresh();
+    }
+  }
+  /** Returns the current user cast as the internal type */
+
+
+  get _currentUser() {
+    return this.currentUser;
+  }
+
+  notifyAuthListeners() {
+    var _a, _b;
+
+    if (!this._isInitialized) {
+      return;
+    }
+
+    this.idTokenSubscription.next(this.currentUser);
+    const currentUid = (_b = (_a = this.currentUser) === null || _a === void 0 ? void 0 : _a.uid) !== null && _b !== void 0 ? _b : null;
+
+    if (this.lastNotifiedUid !== currentUid) {
+      this.lastNotifiedUid = currentUid;
+      this.authStateSubscription.next(this.currentUser);
+    }
+  }
+
+  registerStateListener(subscription, nextOrObserver, error, completed) {
+    if (this._deleted) {
+      return () => {};
+    }
+
+    const cb = typeof nextOrObserver === 'function' ? nextOrObserver : nextOrObserver.next.bind(nextOrObserver);
+    const promise = this._isInitialized ? Promise.resolve() : this._initializationPromise;
+
+    _assert(promise, this, "internal-error"
+    /* INTERNAL_ERROR */
+    ); // The callback needs to be called asynchronously per the spec.
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+
+
+    promise.then(() => cb(this.currentUser));
+
+    if (typeof nextOrObserver === 'function') {
+      return subscription.addObserver(nextOrObserver, error, completed);
+    } else {
+      return subscription.addObserver(nextOrObserver);
+    }
+  }
+  /**
+   * Unprotected (from race conditions) method to set the current user. This
+   * should only be called from within a queued callback. This is necessary
+   * because the queue shouldn't rely on another queued callback.
+   */
+
+
+  async directlySetCurrentUser(user) {
+    if (this.currentUser && this.currentUser !== user) {
+      this._currentUser._stopProactiveRefresh();
+
+      if (user && this.isProactiveRefreshEnabled) {
+        user._startProactiveRefresh();
+      }
+    }
+
+    this.currentUser = user;
+
+    if (user) {
+      await this.assertedPersistence.setCurrentUser(user);
+    } else {
+      await this.assertedPersistence.removeCurrentUser();
+    }
+  }
+
+  queue(action) {
+    // In case something errors, the callback still should be called in order
+    // to keep the promise chain alive
+    this.operations = this.operations.then(action, action);
+    return this.operations;
+  }
+
+  get assertedPersistence() {
+    _assert(this.persistenceManager, this, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    return this.persistenceManager;
+  }
+
+  _logFramework(framework) {
+    if (!framework || this.frameworks.includes(framework)) {
+      return;
+    }
+
+    this.frameworks.push(framework); // Sort alphabetically so that "FirebaseCore-web,FirebaseUI-web" and
+    // "FirebaseUI-web,FirebaseCore-web" aren't viewed as different.
+
+    this.frameworks.sort();
+    this.clientVersion = _getClientVersion(this.config.clientPlatform, this._getFrameworks());
+  }
+
+  _getFrameworks() {
+    return this.frameworks;
+  }
+
+  _getSdkClientVersion() {
+    return this.clientVersion;
+  }
+
+}
+/**
+ * Method to be used to cast down to our private implmentation of Auth.
+ * It will also handle unwrapping from the compat type if necessary
+ *
+ * @param auth Auth object passed in from developer
+ */
+
+
+exports.aE = AuthImpl;
+
+function _castAuth(auth) {
+  return (0, _util.getModularInstance)(auth);
+}
+/** Helper class to wrap subscriber logic */
+
+
+class Subscription {
+  constructor(auth) {
+    this.auth = auth;
+    this.observer = null;
+    this.addObserver = (0, _util.createSubscribe)(observer => this.observer = observer);
+  }
+
+  get next() {
+    _assert(this.observer, this.auth, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    return this.observer.next.bind(this.observer);
+  }
+
+}
+/**
+ * Changes the {@link Auth} instance to communicate with the Firebase Auth Emulator, instead of production
+ * Firebase Auth services.
+ *
+ * @remarks
+ * This must be called synchronously immediately following the first call to
+ * {@link initializeAuth}.  Do not use with production credentials as emulator
+ * traffic is not encrypted.
+ *
+ *
+ * @example
+ * ```javascript
+ * connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+ * ```
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param url - The URL at which the emulator is running (eg, 'http://localhost:9099').
+ * @param options - Optional. `options.disableWarnings` defaults to `false`. Set it to
+ * `true` to disable the warning banner attached to the DOM.
+ *
+ * @public
+ */
+
+
+function connectAuthEmulator(auth, url, options) {
+  const authInternal = _castAuth(auth);
+
+  _assert(authInternal._canInitEmulator, authInternal, "emulator-config-failed"
+  /* EMULATOR_CONFIG_FAILED */
+  );
+
+  _assert(/^https?:\/\//.test(url), authInternal, "invalid-emulator-scheme"
+  /* INVALID_EMULATOR_SCHEME */
+  );
+
+  const disableWarnings = !!(options === null || options === void 0 ? void 0 : options.disableWarnings);
+  const protocol = extractProtocol(url);
+  const {
+    host,
+    port
+  } = extractHostAndPort(url);
+  const portStr = port === null ? '' : `:${port}`; // Always replace path with "/" (even if input url had no path at all, or had a different one).
+
+  authInternal.config.emulator = {
+    url: `${protocol}//${host}${portStr}/`
+  };
+  authInternal.settings.appVerificationDisabledForTesting = true;
+  authInternal.emulatorConfig = Object.freeze({
+    host,
+    port,
+    protocol: protocol.replace(':', ''),
+    options: Object.freeze({
+      disableWarnings
+    })
+  });
+  emitEmulatorWarning(disableWarnings);
+}
+
+function extractProtocol(url) {
+  const protocolEnd = url.indexOf(':');
+  return protocolEnd < 0 ? '' : url.substr(0, protocolEnd + 1);
+}
+
+function extractHostAndPort(url) {
+  const protocol = extractProtocol(url);
+  const authority = /(\/\/)?([^?#/]+)/.exec(url.substr(protocol.length)); // Between // and /, ? or #.
+
+  if (!authority) {
+    return {
+      host: '',
+      port: null
+    };
+  }
+
+  const hostAndPort = authority[2].split('@').pop() || ''; // Strip out "username:password@".
+
+  const bracketedIPv6 = /^(\[[^\]]+\])(:|$)/.exec(hostAndPort);
+
+  if (bracketedIPv6) {
+    const host = bracketedIPv6[1];
+    return {
+      host,
+      port: parsePort(hostAndPort.substr(host.length + 1))
+    };
+  } else {
+    const [host, port] = hostAndPort.split(':');
+    return {
+      host,
+      port: parsePort(port)
+    };
+  }
+}
+
+function parsePort(portStr) {
+  if (!portStr) {
+    return null;
+  }
+
+  const port = Number(portStr);
+
+  if (isNaN(port)) {
+    return null;
+  }
+
+  return port;
+}
+
+function emitEmulatorWarning(disableBanner) {
+  function attachBanner() {
+    const el = document.createElement('p');
+    const sty = el.style;
+    el.innerText = 'Running in emulator mode. Do not use with production credentials.';
+    sty.position = 'fixed';
+    sty.width = '100%';
+    sty.backgroundColor = '#ffffff';
+    sty.border = '.1em solid #000000';
+    sty.color = '#b50000';
+    sty.bottom = '0px';
+    sty.left = '0px';
+    sty.margin = '0px';
+    sty.zIndex = '10000';
+    sty.textAlign = 'center';
+    el.classList.add('firebase-emulator-warning');
+    document.body.appendChild(el);
+  }
+
+  if (typeof console !== 'undefined' && typeof console.info === 'function') {
+    console.info('WARNING: You are using the Auth Emulator,' + ' which is intended for local testing only.  Do not use with' + ' production credentials.');
+  }
+
+  if (typeof window !== 'undefined' && typeof document !== 'undefined' && !disableBanner) {
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', attachBanner);
+    } else {
+      attachBanner();
+    }
+  }
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Interface that represents the credentials returned by an {@link AuthProvider}.
+ *
+ * @remarks
+ * Implementations specify the details about each auth provider's credential requirements.
+ *
+ * @public
+ */
+
+
+class AuthCredential {
+  /** @internal */
+  constructor(
+  /**
+   * The authentication provider ID for the credential.
+   *
+   * @remarks
+   * For example, 'facebook.com', or 'google.com'.
+   */
+  providerId,
+  /**
+   * The authentication sign in method for the credential.
+   *
+   * @remarks
+   * For example, {@link SignInMethod}.EMAIL_PASSWORD, or
+   * {@link SignInMethod}.EMAIL_LINK. This corresponds to the sign-in method
+   * identifier as returned in {@link fetchSignInMethodsForEmail}.
+   */
+  signInMethod) {
+    this.providerId = providerId;
+    this.signInMethod = signInMethod;
+  }
+  /**
+   * Returns a JSON-serializable representation of this object.
+   *
+   * @returns a JSON-serializable representation of this object.
+   */
+
+
+  toJSON() {
+    return debugFail('not implemented');
+  }
+  /** @internal */
+
+
+  _getIdTokenResponse(_auth) {
+    return debugFail('not implemented');
+  }
+  /** @internal */
+
+
+  _linkToIdToken(_auth, _idToken) {
+    return debugFail('not implemented');
+  }
+  /** @internal */
+
+
+  _getReauthenticationResolver(_auth) {
+    return debugFail('not implemented');
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+exports.G = AuthCredential;
+
+async function resetPassword(auth, request) {
+  return _performApiRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:resetPassword"
+  /* RESET_PASSWORD */
+  , _addTidIfNecessary(auth, request));
+}
+
+async function updateEmailPassword(auth, request) {
+  return _performApiRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:update"
+  /* SET_ACCOUNT_INFO */
+  , request);
+}
+
+async function applyActionCode$1(auth, request) {
+  return _performApiRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:update"
+  /* SET_ACCOUNT_INFO */
+  , _addTidIfNecessary(auth, request));
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+async function signInWithPassword(auth, request) {
+  return _performSignInRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:signInWithPassword"
+  /* SIGN_IN_WITH_PASSWORD */
+  , _addTidIfNecessary(auth, request));
+}
+
+async function sendOobCode(auth, request) {
+  return _performApiRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:sendOobCode"
+  /* SEND_OOB_CODE */
+  , _addTidIfNecessary(auth, request));
+}
+
+async function sendEmailVerification$1(auth, request) {
+  return sendOobCode(auth, request);
+}
+
+async function sendPasswordResetEmail$1(auth, request) {
+  return sendOobCode(auth, request);
+}
+
+async function sendSignInLinkToEmail$1(auth, request) {
+  return sendOobCode(auth, request);
+}
+
+async function verifyAndChangeEmail(auth, request) {
+  return sendOobCode(auth, request);
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+async function signInWithEmailLink$1(auth, request) {
+  return _performSignInRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:signInWithEmailLink"
+  /* SIGN_IN_WITH_EMAIL_LINK */
+  , _addTidIfNecessary(auth, request));
+}
+
+async function signInWithEmailLinkForLinking(auth, request) {
+  return _performSignInRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:signInWithEmailLink"
+  /* SIGN_IN_WITH_EMAIL_LINK */
+  , _addTidIfNecessary(auth, request));
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Interface that represents the credentials returned by {@link EmailAuthProvider} for
+ * {@link ProviderId}.PASSWORD
+ *
+ * @remarks
+ * Covers both {@link SignInMethod}.EMAIL_PASSWORD and
+ * {@link SignInMethod}.EMAIL_LINK.
+ *
+ * @public
+ */
+
+
+class EmailAuthCredential extends AuthCredential {
+  /** @internal */
+  constructor(
+  /** @internal */
+  _email,
+  /** @internal */
+  _password, signInMethod,
+  /** @internal */
+  _tenantId = null) {
+    super("password"
+    /* PASSWORD */
+    , signInMethod);
+    this._email = _email;
+    this._password = _password;
+    this._tenantId = _tenantId;
+  }
+  /** @internal */
+
+
+  static _fromEmailAndPassword(email, password) {
+    return new EmailAuthCredential(email, password, "password"
+    /* EMAIL_PASSWORD */
+    );
+  }
+  /** @internal */
+
+
+  static _fromEmailAndCode(email, oobCode, tenantId = null) {
+    return new EmailAuthCredential(email, oobCode, "emailLink"
+    /* EMAIL_LINK */
+    , tenantId);
+  }
+  /** {@inheritdoc AuthCredential.toJSON} */
+
+
+  toJSON() {
+    return {
+      email: this._email,
+      password: this._password,
+      signInMethod: this.signInMethod,
+      tenantId: this._tenantId
+    };
+  }
+  /**
+   * Static method to deserialize a JSON representation of an object into an {@link  AuthCredential}.
+   *
+   * @param json - Either `object` or the stringified representation of the object. When string is
+   * provided, `JSON.parse` would be called first.
+   *
+   * @returns If the JSON input does not represent an {@link AuthCredential}, null is returned.
+   */
+
+
+  static fromJSON(json) {
+    const obj = typeof json === 'string' ? JSON.parse(json) : json;
+
+    if ((obj === null || obj === void 0 ? void 0 : obj.email) && (obj === null || obj === void 0 ? void 0 : obj.password)) {
+      if (obj.signInMethod === "password"
+      /* EMAIL_PASSWORD */
+      ) {
+        return this._fromEmailAndPassword(obj.email, obj.password);
+      } else if (obj.signInMethod === "emailLink"
+      /* EMAIL_LINK */
+      ) {
+        return this._fromEmailAndCode(obj.email, obj.password, obj.tenantId);
+      }
+    }
+
+    return null;
+  }
+  /** @internal */
+
+
+  async _getIdTokenResponse(auth) {
+    switch (this.signInMethod) {
+      case "password"
+      /* EMAIL_PASSWORD */
+      :
+        return signInWithPassword(auth, {
+          returnSecureToken: true,
+          email: this._email,
+          password: this._password
+        });
+
+      case "emailLink"
+      /* EMAIL_LINK */
+      :
+        return signInWithEmailLink$1(auth, {
+          email: this._email,
+          oobCode: this._password
+        });
+
+      default:
+        _fail(auth, "internal-error"
+        /* INTERNAL_ERROR */
+        );
+
+    }
+  }
+  /** @internal */
+
+
+  async _linkToIdToken(auth, idToken) {
+    switch (this.signInMethod) {
+      case "password"
+      /* EMAIL_PASSWORD */
+      :
+        return updateEmailPassword(auth, {
+          idToken,
+          returnSecureToken: true,
+          email: this._email,
+          password: this._password
+        });
+
+      case "emailLink"
+      /* EMAIL_LINK */
+      :
+        return signInWithEmailLinkForLinking(auth, {
+          idToken,
+          email: this._email,
+          oobCode: this._password
+        });
+
+      default:
+        _fail(auth, "internal-error"
+        /* INTERNAL_ERROR */
+        );
+
+    }
+  }
+  /** @internal */
+
+
+  _getReauthenticationResolver(auth) {
+    return this._getIdTokenResponse(auth);
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+exports.H = EmailAuthCredential;
+
+async function signInWithIdp(auth, request) {
+  return _performSignInRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:signInWithIdp"
+  /* SIGN_IN_WITH_IDP */
+  , _addTidIfNecessary(auth, request));
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+const IDP_REQUEST_URI$1 = 'http://localhost';
+/**
+ * Represents the OAuth credentials returned by an {@link OAuthProvider}.
+ *
+ * @remarks
+ * Implementations specify the details about each auth provider's credential requirements.
+ *
+ * @public
+ */
+
+class OAuthCredential extends AuthCredential {
+  constructor() {
+    super(...arguments);
+    this.pendingToken = null;
+  }
+  /** @internal */
+
+
+  static _fromParams(params) {
+    const cred = new OAuthCredential(params.providerId, params.signInMethod);
+
+    if (params.idToken || params.accessToken) {
+      // OAuth 2 and either ID token or access token.
+      if (params.idToken) {
+        cred.idToken = params.idToken;
+      }
+
+      if (params.accessToken) {
+        cred.accessToken = params.accessToken;
+      } // Add nonce if available and no pendingToken is present.
+
+
+      if (params.nonce && !params.pendingToken) {
+        cred.nonce = params.nonce;
+      }
+
+      if (params.pendingToken) {
+        cred.pendingToken = params.pendingToken;
+      }
+    } else if (params.oauthToken && params.oauthTokenSecret) {
+      // OAuth 1 and OAuth token with token secret
+      cred.accessToken = params.oauthToken;
+      cred.secret = params.oauthTokenSecret;
+    } else {
+      _fail("argument-error"
+      /* ARGUMENT_ERROR */
+      );
+    }
+
+    return cred;
+  }
+  /** {@inheritdoc AuthCredential.toJSON}  */
+
+
+  toJSON() {
+    return {
+      idToken: this.idToken,
+      accessToken: this.accessToken,
+      secret: this.secret,
+      nonce: this.nonce,
+      pendingToken: this.pendingToken,
+      providerId: this.providerId,
+      signInMethod: this.signInMethod
+    };
+  }
+  /**
+   * Static method to deserialize a JSON representation of an object into an
+   * {@link  AuthCredential}.
+   *
+   * @param json - Input can be either Object or the stringified representation of the object.
+   * When string is provided, JSON.parse would be called first.
+   *
+   * @returns If the JSON input does not represent an {@link  AuthCredential}, null is returned.
+   */
+
+
+  static fromJSON(json) {
+    const obj = typeof json === 'string' ? JSON.parse(json) : json;
+    const {
+      providerId,
+      signInMethod
+    } = obj,
+          rest = (0, _tslib.__rest)(obj, ["providerId", "signInMethod"]);
+
+    if (!providerId || !signInMethod) {
+      return null;
+    }
+
+    const cred = new OAuthCredential(providerId, signInMethod);
+    Object.assign(cred, rest);
+    return cred;
+  }
+  /** @internal */
+
+
+  _getIdTokenResponse(auth) {
+    const request = this.buildRequest();
+    return signInWithIdp(auth, request);
+  }
+  /** @internal */
+
+
+  _linkToIdToken(auth, idToken) {
+    const request = this.buildRequest();
+    request.idToken = idToken;
+    return signInWithIdp(auth, request);
+  }
+  /** @internal */
+
+
+  _getReauthenticationResolver(auth) {
+    const request = this.buildRequest();
+    request.autoCreate = false;
+    return signInWithIdp(auth, request);
+  }
+
+  buildRequest() {
+    const request = {
+      requestUri: IDP_REQUEST_URI$1,
+      returnSecureToken: true
+    };
+
+    if (this.pendingToken) {
+      request.pendingToken = this.pendingToken;
+    } else {
+      const postBody = {};
+
+      if (this.idToken) {
+        postBody['id_token'] = this.idToken;
+      }
+
+      if (this.accessToken) {
+        postBody['access_token'] = this.accessToken;
+      }
+
+      if (this.secret) {
+        postBody['oauth_token_secret'] = this.secret;
+      }
+
+      postBody['providerId'] = this.providerId;
+
+      if (this.nonce && !this.pendingToken) {
+        postBody['nonce'] = this.nonce;
+      }
+
+      request.postBody = (0, _util.querystring)(postBody);
+    }
+
+    return request;
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+exports.I = OAuthCredential;
+
+async function sendPhoneVerificationCode(auth, request) {
+  return _performApiRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:sendVerificationCode"
+  /* SEND_VERIFICATION_CODE */
+  , _addTidIfNecessary(auth, request));
+}
+
+async function signInWithPhoneNumber$1(auth, request) {
+  return _performSignInRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:signInWithPhoneNumber"
+  /* SIGN_IN_WITH_PHONE_NUMBER */
+  , _addTidIfNecessary(auth, request));
+}
+
+async function linkWithPhoneNumber$1(auth, request) {
+  const response = await _performSignInRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:signInWithPhoneNumber"
+  /* SIGN_IN_WITH_PHONE_NUMBER */
+  , _addTidIfNecessary(auth, request));
+
+  if (response.temporaryProof) {
+    throw _makeTaggedError(auth, "account-exists-with-different-credential"
+    /* NEED_CONFIRMATION */
+    , response);
+  }
+
+  return response;
+}
+
+const VERIFY_PHONE_NUMBER_FOR_EXISTING_ERROR_MAP_ = {
+  ["USER_NOT_FOUND"
+  /* USER_NOT_FOUND */
+  ]: "user-not-found"
+  /* USER_DELETED */
+
+};
+
+async function verifyPhoneNumberForExisting(auth, request) {
+  const apiRequest = Object.assign(Object.assign({}, request), {
+    operation: 'REAUTH'
+  });
+  return _performSignInRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:signInWithPhoneNumber"
+  /* SIGN_IN_WITH_PHONE_NUMBER */
+  , _addTidIfNecessary(auth, apiRequest), VERIFY_PHONE_NUMBER_FOR_EXISTING_ERROR_MAP_);
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Represents the credentials returned by {@link PhoneAuthProvider}.
+ *
+ * @public
+ */
+
+
+class PhoneAuthCredential extends AuthCredential {
+  constructor(params) {
+    super("phone"
+    /* PHONE */
+    , "phone"
+    /* PHONE */
+    );
+    this.params = params;
+  }
+  /** @internal */
+
+
+  static _fromVerification(verificationId, verificationCode) {
+    return new PhoneAuthCredential({
+      verificationId,
+      verificationCode
+    });
+  }
+  /** @internal */
+
+
+  static _fromTokenResponse(phoneNumber, temporaryProof) {
+    return new PhoneAuthCredential({
+      phoneNumber,
+      temporaryProof
+    });
+  }
+  /** @internal */
+
+
+  _getIdTokenResponse(auth) {
+    return signInWithPhoneNumber$1(auth, this._makeVerificationRequest());
+  }
+  /** @internal */
+
+
+  _linkToIdToken(auth, idToken) {
+    return linkWithPhoneNumber$1(auth, Object.assign({
+      idToken
+    }, this._makeVerificationRequest()));
+  }
+  /** @internal */
+
+
+  _getReauthenticationResolver(auth) {
+    return verifyPhoneNumberForExisting(auth, this._makeVerificationRequest());
+  }
+  /** @internal */
+
+
+  _makeVerificationRequest() {
+    const {
+      temporaryProof,
+      phoneNumber,
+      verificationId,
+      verificationCode
+    } = this.params;
+
+    if (temporaryProof && phoneNumber) {
+      return {
+        temporaryProof,
+        phoneNumber
+      };
+    }
+
+    return {
+      sessionInfo: verificationId,
+      code: verificationCode
+    };
+  }
+  /** {@inheritdoc AuthCredential.toJSON} */
+
+
+  toJSON() {
+    const obj = {
+      providerId: this.providerId
+    };
+
+    if (this.params.phoneNumber) {
+      obj.phoneNumber = this.params.phoneNumber;
+    }
+
+    if (this.params.temporaryProof) {
+      obj.temporaryProof = this.params.temporaryProof;
+    }
+
+    if (this.params.verificationCode) {
+      obj.verificationCode = this.params.verificationCode;
+    }
+
+    if (this.params.verificationId) {
+      obj.verificationId = this.params.verificationId;
+    }
+
+    return obj;
+  }
+  /** Generates a phone credential based on a plain object or a JSON string. */
+
+
+  static fromJSON(json) {
+    if (typeof json === 'string') {
+      json = JSON.parse(json);
+    }
+
+    const {
+      verificationId,
+      verificationCode,
+      phoneNumber,
+      temporaryProof
+    } = json;
+
+    if (!verificationCode && !verificationId && !phoneNumber && !temporaryProof) {
+      return null;
+    }
+
+    return new PhoneAuthCredential({
+      verificationId,
+      verificationCode,
+      phoneNumber,
+      temporaryProof
+    });
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Maps the mode string in action code URL to Action Code Info operation.
+ *
+ * @param mode
+ */
+
+
+exports.J = PhoneAuthCredential;
+
+function parseMode(mode) {
+  switch (mode) {
+    case 'recoverEmail':
+      return "RECOVER_EMAIL"
+      /* RECOVER_EMAIL */
+      ;
+
+    case 'resetPassword':
+      return "PASSWORD_RESET"
+      /* PASSWORD_RESET */
+      ;
+
+    case 'signIn':
+      return "EMAIL_SIGNIN"
+      /* EMAIL_SIGNIN */
+      ;
+
+    case 'verifyEmail':
+      return "VERIFY_EMAIL"
+      /* VERIFY_EMAIL */
+      ;
+
+    case 'verifyAndChangeEmail':
+      return "VERIFY_AND_CHANGE_EMAIL"
+      /* VERIFY_AND_CHANGE_EMAIL */
+      ;
+
+    case 'revertSecondFactorAddition':
+      return "REVERT_SECOND_FACTOR_ADDITION"
+      /* REVERT_SECOND_FACTOR_ADDITION */
+      ;
+
+    default:
+      return null;
+  }
+}
+/**
+ * Helper to parse FDL links
+ *
+ * @param url
+ */
+
+
+function parseDeepLink(url) {
+  const link = (0, _util.querystringDecode)((0, _util.extractQuerystring)(url))['link']; // Double link case (automatic redirect).
+
+  const doubleDeepLink = link ? (0, _util.querystringDecode)((0, _util.extractQuerystring)(link))['deep_link_id'] : null; // iOS custom scheme links.
+
+  const iOSDeepLink = (0, _util.querystringDecode)((0, _util.extractQuerystring)(url))['deep_link_id'];
+  const iOSDoubleDeepLink = iOSDeepLink ? (0, _util.querystringDecode)((0, _util.extractQuerystring)(iOSDeepLink))['link'] : null;
+  return iOSDoubleDeepLink || iOSDeepLink || doubleDeepLink || link || url;
+}
+/**
+ * A utility class to parse email action URLs such as password reset, email verification,
+ * email link sign in, etc.
+ *
+ * @public
+ */
+
+
+class ActionCodeURL {
+  /**
+   * @param actionLink - The link from which to extract the URL.
+   * @returns The {@link ActionCodeURL} object, or null if the link is invalid.
+   *
+   * @internal
+   */
+  constructor(actionLink) {
+    var _a, _b, _c, _d, _e, _f;
+
+    const searchParams = (0, _util.querystringDecode)((0, _util.extractQuerystring)(actionLink));
+    const apiKey = (_a = searchParams["apiKey"
+    /* API_KEY */
+    ]) !== null && _a !== void 0 ? _a : null;
+    const code = (_b = searchParams["oobCode"
+    /* CODE */
+    ]) !== null && _b !== void 0 ? _b : null;
+    const operation = parseMode((_c = searchParams["mode"
+    /* MODE */
+    ]) !== null && _c !== void 0 ? _c : null); // Validate API key, code and mode.
+
+    _assert(apiKey && code && operation, "argument-error"
+    /* ARGUMENT_ERROR */
+    );
+
+    this.apiKey = apiKey;
+    this.operation = operation;
+    this.code = code;
+    this.continueUrl = (_d = searchParams["continueUrl"
+    /* CONTINUE_URL */
+    ]) !== null && _d !== void 0 ? _d : null;
+    this.languageCode = (_e = searchParams["languageCode"
+    /* LANGUAGE_CODE */
+    ]) !== null && _e !== void 0 ? _e : null;
+    this.tenantId = (_f = searchParams["tenantId"
+    /* TENANT_ID */
+    ]) !== null && _f !== void 0 ? _f : null;
+  }
+  /**
+   * Parses the email action link string and returns an {@link ActionCodeURL} if the link is valid,
+   * otherwise returns null.
+   *
+   * @param link  - The email action link string.
+   * @returns The {@link ActionCodeURL} object, or null if the link is invalid.
+   *
+   * @public
+   */
+
+
+  static parseLink(link) {
+    const actionLink = parseDeepLink(link);
+
+    try {
+      return new ActionCodeURL(actionLink);
+    } catch (_a) {
+      return null;
+    }
+  }
+
+}
+/**
+ * Parses the email action link string and returns an {@link ActionCodeURL} if
+ * the link is valid, otherwise returns null.
+ *
+ * @public
+ */
+
+
+exports.ac = ActionCodeURL;
+
+function parseActionCodeURL(link) {
+  return ActionCodeURL.parseLink(link);
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Provider for generating {@link EmailAuthCredential}.
+ *
+ * @public
+ */
+
+
+class EmailAuthProvider {
+  constructor() {
+    /**
+     * Always set to {@link ProviderId}.PASSWORD, even for email link.
+     */
+    this.providerId = EmailAuthProvider.PROVIDER_ID;
+  }
+  /**
+   * Initialize an {@link AuthCredential} using an email and password.
+   *
+   * @example
+   * ```javascript
+   * const authCredential = EmailAuthProvider.credential(email, password);
+   * const userCredential = await signInWithCredential(auth, authCredential);
+   * ```
+   *
+   * @example
+   * ```javascript
+   * const userCredential = await signInWithEmailAndPassword(auth, email, password);
+   * ```
+   *
+   * @param email - Email address.
+   * @param password - User account password.
+   * @returns The auth provider credential.
+   */
+
+
+  static credential(email, password) {
+    return EmailAuthCredential._fromEmailAndPassword(email, password);
+  }
+  /**
+   * Initialize an {@link AuthCredential} using an email and an email link after a sign in with
+   * email link operation.
+   *
+   * @example
+   * ```javascript
+   * const authCredential = EmailAuthProvider.credentialWithLink(auth, email, emailLink);
+   * const userCredential = await signInWithCredential(auth, authCredential);
+   * ```
+   *
+   * @example
+   * ```javascript
+   * await sendSignInLinkToEmail(auth, email);
+   * // Obtain emailLink from user.
+   * const userCredential = await signInWithEmailLink(auth, email, emailLink);
+   * ```
+   *
+   * @param auth - The {@link Auth} instance used to verify the link.
+   * @param email - Email address.
+   * @param emailLink - Sign-in email link.
+   * @returns - The auth provider credential.
+   */
+
+
+  static credentialWithLink(email, emailLink) {
+    const actionCodeUrl = ActionCodeURL.parseLink(emailLink);
+
+    _assert(actionCodeUrl, "argument-error"
+    /* ARGUMENT_ERROR */
+    );
+
+    return EmailAuthCredential._fromEmailAndCode(email, actionCodeUrl.code, actionCodeUrl.tenantId);
+  }
+
+}
+/**
+ * Always set to {@link ProviderId}.PASSWORD, even for email link.
+ */
+
+
+exports.L = EmailAuthProvider;
+EmailAuthProvider.PROVIDER_ID = "password"
+/* PASSWORD */
+;
+/**
+ * Always set to {@link SignInMethod}.EMAIL_PASSWORD.
+ */
+
+EmailAuthProvider.EMAIL_PASSWORD_SIGN_IN_METHOD = "password"
+/* EMAIL_PASSWORD */
+;
+/**
+ * Always set to {@link SignInMethod}.EMAIL_LINK.
+ */
+
+EmailAuthProvider.EMAIL_LINK_SIGN_IN_METHOD = "emailLink"
+/* EMAIL_LINK */
+;
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * The base class for all Federated providers (OAuth (including OIDC), SAML).
+ *
+ * This class is not meant to be instantiated directly.
+ *
+ * @public
+ */
+
+class FederatedAuthProvider {
+  /**
+   * Constructor for generic OAuth providers.
+   *
+   * @param providerId - Provider for which credentials should be generated.
+   */
+  constructor(providerId) {
+    this.providerId = providerId;
+    /** @internal */
+
+    this.defaultLanguageCode = null;
+    /** @internal */
+
+    this.customParameters = {};
+  }
+  /**
+   * Set the language gode.
+   *
+   * @param languageCode - language code
+   */
+
+
+  setDefaultLanguage(languageCode) {
+    this.defaultLanguageCode = languageCode;
+  }
+  /**
+   * Sets the OAuth custom parameters to pass in an OAuth request for popup and redirect sign-in
+   * operations.
+   *
+   * @remarks
+   * For a detailed list, check the reserved required OAuth 2.0 parameters such as `client_id`,
+   * `redirect_uri`, `scope`, `response_type`, and `state` are not allowed and will be ignored.
+   *
+   * @param customOAuthParameters - The custom OAuth parameters to pass in the OAuth request.
+   */
+
+
+  setCustomParameters(customOAuthParameters) {
+    this.customParameters = customOAuthParameters;
+    return this;
+  }
+  /**
+   * Retrieve the current list of {@link CustomParameters}.
+   */
+
+
+  getCustomParameters() {
+    return this.customParameters;
+  }
+
+}
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Common code to all OAuth providers. This is separate from the
+ * {@link OAuthProvider} so that child providers (like
+ * {@link GoogleAuthProvider}) don't inherit the `credential` instance method.
+ * Instead, they rely on a static `credential` method.
+ */
+
+
+class BaseOAuthProvider extends FederatedAuthProvider {
+  constructor() {
+    super(...arguments);
+    /** @internal */
+
+    this.scopes = [];
+  }
+  /**
+   * Add an OAuth scope to the credential.
+   *
+   * @param scope - Provider OAuth scope to add.
+   */
+
+
+  addScope(scope) {
+    // If not already added, add scope to list.
+    if (!this.scopes.includes(scope)) {
+      this.scopes.push(scope);
+    }
+
+    return this;
+  }
+  /**
+   * Retrieve the current list of OAuth scopes.
+   */
+
+
+  getScopes() {
+    return [...this.scopes];
+  }
+
+}
+/**
+ * Provider for generating generic {@link OAuthCredential}.
+ *
+ * @example
+ * ```javascript
+ * // Sign in using a redirect.
+ * const provider = new OAuthProvider('google.com');
+ * // Start a sign in process for an unauthenticated user.
+ * provider.addScope('profile');
+ * provider.addScope('email');
+ * await signInWithRedirect(auth, provider);
+ * // This will trigger a full page redirect away from your app
+ *
+ * // After returning from the redirect when your app initializes you can obtain the result
+ * const result = await getRedirectResult(auth);
+ * if (result) {
+ *   // This is the signed-in user
+ *   const user = result.user;
+ *   // This gives you a OAuth Access Token for the provider.
+ *   const credential = provider.credentialFromResult(auth, result);
+ *   const token = credential.accessToken;
+ * }
+ * ```
+ *
+ * @example
+ * ```javascript
+ * // Sign in using a popup.
+ * const provider = new OAuthProvider('google.com');
+ * provider.addScope('profile');
+ * provider.addScope('email');
+ * const result = await signInWithPopup(auth, provider);
+ *
+ * // The signed-in user info.
+ * const user = result.user;
+ * // This gives you a OAuth Access Token for the provider.
+ * const credential = provider.credentialFromResult(auth, result);
+ * const token = credential.accessToken;
+ * ```
+ * @public
+ */
+
+
+class OAuthProvider extends BaseOAuthProvider {
+  /**
+   * Creates an {@link OAuthCredential} from a JSON string or a plain object.
+   * @param json - A plain object or a JSON string
+   */
+  static credentialFromJSON(json) {
+    const obj = typeof json === 'string' ? JSON.parse(json) : json;
+
+    _assert('providerId' in obj && 'signInMethod' in obj, "argument-error"
+    /* ARGUMENT_ERROR */
+    );
+
+    return OAuthCredential._fromParams(obj);
+  }
+  /**
+   * Creates a {@link OAuthCredential} from a generic OAuth provider's access token or ID token.
+   *
+   * @remarks
+   * The raw nonce is required when an ID token with a nonce field is provided. The SHA-256 hash of
+   * the raw nonce must match the nonce field in the ID token.
+   *
+   * @example
+   * ```javascript
+   * // `googleUser` from the onsuccess Google Sign In callback.
+   * // Initialize a generate OAuth provider with a `google.com` providerId.
+   * const provider = new OAuthProvider('google.com');
+   * const credential = provider.credential({
+   *   idToken: googleUser.getAuthResponse().id_token,
+   * });
+   * const result = await signInWithCredential(credential);
+   * ```
+   *
+   * @param params - Either the options object containing the ID token, access token and raw nonce
+   * or the ID token string.
+   */
+
+
+  credential(params) {
+    return this._credential(params);
+  }
+  /** An internal credential method that accepts more permissive options */
+
+
+  _credential(params) {
+    _assert(params.idToken || params.accessToken, "argument-error"
+    /* ARGUMENT_ERROR */
+    ); // For OAuthCredential, sign in method is same as providerId.
+
+
+    return OAuthCredential._fromParams(Object.assign(Object.assign({}, params), {
+      providerId: this.providerId,
+      signInMethod: this.providerId
+    }));
+  }
+  /**
+   * Used to extract the underlying {@link OAuthCredential} from a {@link UserCredential}.
+   *
+   * @param userCredential - The user credential.
+   */
+
+
+  static credentialFromResult(userCredential) {
+    return OAuthProvider.oauthCredentialFromTaggedObject(userCredential);
+  }
+  /**
+   * Used to extract the underlying {@link OAuthCredential} from a {@link AuthError} which was
+   * thrown during a sign-in, link, or reauthenticate operation.
+   *
+   * @param userCredential - The user credential.
+   */
+
+
+  static credentialFromError(error) {
+    return OAuthProvider.oauthCredentialFromTaggedObject(error.customData || {});
+  }
+
+  static oauthCredentialFromTaggedObject({
+    _tokenResponse: tokenResponse
+  }) {
+    if (!tokenResponse) {
+      return null;
+    }
+
+    const {
+      oauthIdToken,
+      oauthAccessToken,
+      oauthTokenSecret,
+      pendingToken,
+      nonce,
+      providerId
+    } = tokenResponse;
+
+    if (!oauthAccessToken && !oauthTokenSecret && !oauthIdToken && !pendingToken) {
+      return null;
+    }
+
+    if (!providerId) {
+      return null;
+    }
+
+    try {
+      return new OAuthProvider(providerId)._credential({
+        idToken: oauthIdToken,
+        accessToken: oauthAccessToken,
+        rawNonce: nonce,
+        pendingToken
+      });
+    } catch (e) {
+      return null;
+    }
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Provider for generating an {@link OAuthCredential} for {@link ProviderId}.FACEBOOK.
+ *
+ * @example
+ * ```javascript
+ * // Sign in using a redirect.
+ * const provider = new FacebookAuthProvider();
+ * // Start a sign in process for an unauthenticated user.
+ * provider.addScope('user_birthday');
+ * await signInWithRedirect(auth, provider);
+ * // This will trigger a full page redirect away from your app
+ *
+ * // After returning from the redirect when your app initializes you can obtain the result
+ * const result = await getRedirectResult(auth);
+ * if (result) {
+ *   // This is the signed-in user
+ *   const user = result.user;
+ *   // This gives you a Facebook Access Token.
+ *   const credential = provider.credentialFromResult(auth, result);
+ *   const token = credential.accessToken;
+ * }
+ * ```
+ *
+ * @example
+ * ```javascript
+ * // Sign in using a popup.
+ * const provider = new FacebookAuthProvider();
+ * provider.addScope('user_birthday');
+ * const result = await signInWithPopup(auth, provider);
+ *
+ * // The signed-in user info.
+ * const user = result.user;
+ * // This gives you a Facebook Access Token.
+ * const credential = provider.credentialFromResult(auth, result);
+ * const token = credential.accessToken;
+ * ```
+ *
+ * @public
+ */
+
+
+exports.T = OAuthProvider;
+
+class FacebookAuthProvider extends BaseOAuthProvider {
+  constructor() {
+    super("facebook.com"
+    /* FACEBOOK */
+    );
+  }
+  /**
+   * Creates a credential for Facebook.
+   *
+   * @example
+   * ```javascript
+   * // `event` from the Facebook auth.authResponseChange callback.
+   * const credential = FacebookAuthProvider.credential(event.authResponse.accessToken);
+   * const result = await signInWithCredential(credential);
+   * ```
+   *
+   * @param accessToken - Facebook access token.
+   */
+
+
+  static credential(accessToken) {
+    return OAuthCredential._fromParams({
+      providerId: FacebookAuthProvider.PROVIDER_ID,
+      signInMethod: FacebookAuthProvider.FACEBOOK_SIGN_IN_METHOD,
+      accessToken
+    });
+  }
+  /**
+   * Used to extract the underlying {@link OAuthCredential} from a {@link UserCredential}.
+   *
+   * @param userCredential - The user credential.
+   */
+
+
+  static credentialFromResult(userCredential) {
+    return FacebookAuthProvider.credentialFromTaggedObject(userCredential);
+  }
+  /**
+   * Used to extract the underlying {@link OAuthCredential} from a {@link AuthError} which was
+   * thrown during a sign-in, link, or reauthenticate operation.
+   *
+   * @param userCredential - The user credential.
+   */
+
+
+  static credentialFromError(error) {
+    return FacebookAuthProvider.credentialFromTaggedObject(error.customData || {});
+  }
+
+  static credentialFromTaggedObject({
+    _tokenResponse: tokenResponse
+  }) {
+    if (!tokenResponse || !('oauthAccessToken' in tokenResponse)) {
+      return null;
+    }
+
+    if (!tokenResponse.oauthAccessToken) {
+      return null;
+    }
+
+    try {
+      return FacebookAuthProvider.credential(tokenResponse.oauthAccessToken);
+    } catch (_a) {
+      return null;
+    }
+  }
+
+}
+/** Always set to {@link SignInMethod}.FACEBOOK. */
+
+
+exports.M = FacebookAuthProvider;
+FacebookAuthProvider.FACEBOOK_SIGN_IN_METHOD = "facebook.com"
+/* FACEBOOK */
+;
+/** Always set to {@link ProviderId}.FACEBOOK. */
+
+FacebookAuthProvider.PROVIDER_ID = "facebook.com"
+/* FACEBOOK */
+;
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Provider for generating an an {@link OAuthCredential} for {@link ProviderId}.GOOGLE.
+ *
+ * @example
+ * ```javascript
+ * // Sign in using a redirect.
+ * const provider = new GoogleAuthProvider();
+ * // Start a sign in process for an unauthenticated user.
+ * provider.addScope('profile');
+ * provider.addScope('email');
+ * await signInWithRedirect(auth, provider);
+ * // This will trigger a full page redirect away from your app
+ *
+ * // After returning from the redirect when your app initializes you can obtain the result
+ * const result = await getRedirectResult(auth);
+ * if (result) {
+ *   // This is the signed-in user
+ *   const user = result.user;
+ *   // This gives you a Google Access Token.
+ *   const credential = provider.credentialFromResult(auth, result);
+ *   const token = credential.accessToken;
+ * }
+ * ```
+ *
+ * @example
+ * ```javascript
+ * // Sign in using a popup.
+ * const provider = new GoogleAuthProvider();
+ * provider.addScope('profile');
+ * provider.addScope('email');
+ * const result = await signInWithPopup(auth, provider);
+ *
+ * // The signed-in user info.
+ * const user = result.user;
+ * // This gives you a Google Access Token.
+ * const credential = provider.credentialFromResult(auth, result);
+ * const token = credential.accessToken;
+ * ```
+ *
+ * @public
+ */
+
+class GoogleAuthProvider extends BaseOAuthProvider {
+  constructor() {
+    super("google.com"
+    /* GOOGLE */
+    );
+    this.addScope('profile');
+  }
+  /**
+   * Creates a credential for Google. At least one of ID token and access token is required.
+   *
+   * @example
+   * ```javascript
+   * // \`googleUser\` from the onsuccess Google Sign In callback.
+   * const credential = GoogleAuthProvider.credential(googleUser.getAuthResponse().id_token);
+   * const result = await signInWithCredential(credential);
+   * ```
+   *
+   * @param idToken - Google ID token.
+   * @param accessToken - Google access token.
+   */
+
+
+  static credential(idToken, accessToken) {
+    return OAuthCredential._fromParams({
+      providerId: GoogleAuthProvider.PROVIDER_ID,
+      signInMethod: GoogleAuthProvider.GOOGLE_SIGN_IN_METHOD,
+      idToken,
+      accessToken
+    });
+  }
+  /**
+   * Used to extract the underlying {@link OAuthCredential} from a {@link UserCredential}.
+   *
+   * @param userCredential - The user credential.
+   */
+
+
+  static credentialFromResult(userCredential) {
+    return GoogleAuthProvider.credentialFromTaggedObject(userCredential);
+  }
+  /**
+   * Used to extract the underlying {@link OAuthCredential} from a {@link AuthError} which was
+   * thrown during a sign-in, link, or reauthenticate operation.
+   *
+   * @param userCredential - The user credential.
+   */
+
+
+  static credentialFromError(error) {
+    return GoogleAuthProvider.credentialFromTaggedObject(error.customData || {});
+  }
+
+  static credentialFromTaggedObject({
+    _tokenResponse: tokenResponse
+  }) {
+    if (!tokenResponse) {
+      return null;
+    }
+
+    const {
+      oauthIdToken,
+      oauthAccessToken
+    } = tokenResponse;
+
+    if (!oauthIdToken && !oauthAccessToken) {
+      // This could be an oauth 1 credential or a phone credential
+      return null;
+    }
+
+    try {
+      return GoogleAuthProvider.credential(oauthIdToken, oauthAccessToken);
+    } catch (_a) {
+      return null;
+    }
+  }
+
+}
+/** Always set to {@link SignInMethod}.GOOGLE. */
+
+
+exports.N = GoogleAuthProvider;
+GoogleAuthProvider.GOOGLE_SIGN_IN_METHOD = "google.com"
+/* GOOGLE */
+;
+/** Always set to {@link ProviderId}.GOOGLE. */
+
+GoogleAuthProvider.PROVIDER_ID = "google.com"
+/* GOOGLE */
+;
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Provider for generating an {@link OAuthCredential} for {@link ProviderId}.GITHUB.
+ *
+ * @remarks
+ * GitHub requires an OAuth 2.0 redirect, so you can either handle the redirect directly, or use
+ * the {@link signInWithPopup} handler:
+ *
+ * @example
+ * ```javascript
+ * // Sign in using a redirect.
+ * const provider = new GithubAuthProvider();
+ * // Start a sign in process for an unauthenticated user.
+ * provider.addScope('repo');
+ * await signInWithRedirect(auth, provider);
+ * // This will trigger a full page redirect away from your app
+ *
+ * // After returning from the redirect when your app initializes you can obtain the result
+ * const result = await getRedirectResult(auth);
+ * if (result) {
+ *   // This is the signed-in user
+ *   const user = result.user;
+ *   // This gives you a Github Access Token.
+ *   const credential = provider.credentialFromResult(auth, result);
+ *   const token = credential.accessToken;
+ * }
+ * ```
+ *
+ * @example
+ * ```javascript
+ * // Sign in using a popup.
+ * const provider = new GithubAuthProvider();
+ * provider.addScope('repo');
+ * const result = await signInWithPopup(auth, provider);
+ *
+ * // The signed-in user info.
+ * const user = result.user;
+ * // This gives you a Github Access Token.
+ * const credential = provider.credentialFromResult(auth, result);
+ * const token = credential.accessToken;
+ * ```
+ * @public
+ */
+
+class GithubAuthProvider extends BaseOAuthProvider {
+  constructor() {
+    super("github.com"
+    /* GITHUB */
+    );
+  }
+  /**
+   * Creates a credential for Github.
+   *
+   * @param accessToken - Github access token.
+   */
+
+
+  static credential(accessToken) {
+    return OAuthCredential._fromParams({
+      providerId: GithubAuthProvider.PROVIDER_ID,
+      signInMethod: GithubAuthProvider.GITHUB_SIGN_IN_METHOD,
+      accessToken
+    });
+  }
+  /**
+   * Used to extract the underlying {@link OAuthCredential} from a {@link UserCredential}.
+   *
+   * @param userCredential - The user credential.
+   */
+
+
+  static credentialFromResult(userCredential) {
+    return GithubAuthProvider.credentialFromTaggedObject(userCredential);
+  }
+  /**
+   * Used to extract the underlying {@link OAuthCredential} from a {@link AuthError} which was
+   * thrown during a sign-in, link, or reauthenticate operation.
+   *
+   * @param userCredential - The user credential.
+   */
+
+
+  static credentialFromError(error) {
+    return GithubAuthProvider.credentialFromTaggedObject(error.customData || {});
+  }
+
+  static credentialFromTaggedObject({
+    _tokenResponse: tokenResponse
+  }) {
+    if (!tokenResponse || !('oauthAccessToken' in tokenResponse)) {
+      return null;
+    }
+
+    if (!tokenResponse.oauthAccessToken) {
+      return null;
+    }
+
+    try {
+      return GithubAuthProvider.credential(tokenResponse.oauthAccessToken);
+    } catch (_a) {
+      return null;
+    }
+  }
+
+}
+/** Always set to {@link SignInMethod}.GITHUB. */
+
+
+exports.Q = GithubAuthProvider;
+GithubAuthProvider.GITHUB_SIGN_IN_METHOD = "github.com"
+/* GITHUB */
+;
+/** Always set to {@link ProviderId}.GITHUB. */
+
+GithubAuthProvider.PROVIDER_ID = "github.com"
+/* GITHUB */
+;
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+const IDP_REQUEST_URI = 'http://localhost';
+/**
+ * @public
+ */
+
+class SAMLAuthCredential extends AuthCredential {
+  /** @internal */
+  constructor(providerId, pendingToken) {
+    super(providerId, providerId);
+    this.pendingToken = pendingToken;
+  }
+  /** @internal */
+
+
+  _getIdTokenResponse(auth) {
+    const request = this.buildRequest();
+    return signInWithIdp(auth, request);
+  }
+  /** @internal */
+
+
+  _linkToIdToken(auth, idToken) {
+    const request = this.buildRequest();
+    request.idToken = idToken;
+    return signInWithIdp(auth, request);
+  }
+  /** @internal */
+
+
+  _getReauthenticationResolver(auth) {
+    const request = this.buildRequest();
+    request.autoCreate = false;
+    return signInWithIdp(auth, request);
+  }
+  /** {@inheritdoc AuthCredential.toJSON}  */
+
+
+  toJSON() {
+    return {
+      signInMethod: this.signInMethod,
+      providerId: this.providerId,
+      pendingToken: this.pendingToken
+    };
+  }
+  /**
+   * Static method to deserialize a JSON representation of an object into an
+   * {@link  AuthCredential}.
+   *
+   * @param json - Input can be either Object or the stringified representation of the object.
+   * When string is provided, JSON.parse would be called first.
+   *
+   * @returns If the JSON input does not represent an {@link  AuthCredential}, null is returned.
+   */
+
+
+  static fromJSON(json) {
+    const obj = typeof json === 'string' ? JSON.parse(json) : json;
+    const {
+      providerId,
+      signInMethod,
+      pendingToken
+    } = obj;
+
+    if (!providerId || !signInMethod || !pendingToken || providerId !== signInMethod) {
+      return null;
+    }
+
+    return new SAMLAuthCredential(providerId, pendingToken);
+  }
+  /**
+   * Helper static method to avoid exposing the constructor to end users.
+   *
+   * @internal
+   */
+
+
+  static _create(providerId, pendingToken) {
+    return new SAMLAuthCredential(providerId, pendingToken);
+  }
+
+  buildRequest() {
+    return {
+      requestUri: IDP_REQUEST_URI,
+      returnSecureToken: true,
+      pendingToken: this.pendingToken
+    };
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+exports.aJ = SAMLAuthCredential;
+const SAML_PROVIDER_PREFIX = 'saml.';
+/**
+ * An {@link AuthProvider} for SAML.
+ *
+ * @public
+ */
+
+class SAMLAuthProvider extends FederatedAuthProvider {
+  /**
+   * Constructor. The providerId must start with "saml."
+   * @param providerId - SAML provider ID.
+   */
+  constructor(providerId) {
+    _assert(providerId.startsWith(SAML_PROVIDER_PREFIX), "argument-error"
+    /* ARGUMENT_ERROR */
+    );
+
+    super(providerId);
+  }
+  /**
+   * Generates an {@link AuthCredential} from a {@link UserCredential} after a
+   * successful SAML flow completes.
+   *
+   * @remarks
+   *
+   * For example, to get an {@link AuthCredential}, you could write the
+   * following code:
+   *
+   * ```js
+   * const userCredential = await signInWithPopup(auth, samlProvider);
+   * const credential = SAMLAuthProvider.credentialFromResult(userCredential);
+   * ```
+   *
+   * @param userCredential - The user credential.
+   */
+
+
+  static credentialFromResult(userCredential) {
+    return SAMLAuthProvider.samlCredentialFromTaggedObject(userCredential);
+  }
+  /**
+   * Used to extract the underlying {@link OAuthCredential} from a {@link AuthError} which was
+   * thrown during a sign-in, link, or reauthenticate operation.
+   *
+   * @param userCredential - The user credential.
+   */
+
+
+  static credentialFromError(error) {
+    return SAMLAuthProvider.samlCredentialFromTaggedObject(error.customData || {});
+  }
+  /**
+   * Creates an {@link AuthCredential} from a JSON string or a plain object.
+   * @param json - A plain object or a JSON string
+   */
+
+
+  static credentialFromJSON(json) {
+    const credential = SAMLAuthCredential.fromJSON(json);
+
+    _assert(credential, "argument-error"
+    /* ARGUMENT_ERROR */
+    );
+
+    return credential;
+  }
+
+  static samlCredentialFromTaggedObject({
+    _tokenResponse: tokenResponse
+  }) {
+    if (!tokenResponse) {
+      return null;
+    }
+
+    const {
+      pendingToken,
+      providerId
+    } = tokenResponse;
+
+    if (!pendingToken || !providerId) {
+      return null;
+    }
+
+    try {
+      return SAMLAuthCredential._create(providerId, pendingToken);
+    } catch (e) {
+      return null;
+    }
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Provider for generating an {@link OAuthCredential} for {@link ProviderId}.TWITTER.
+ *
+ * @example
+ * ```javascript
+ * // Sign in using a redirect.
+ * const provider = new TwitterAuthProvider();
+ * // Start a sign in process for an unauthenticated user.
+ * await signInWithRedirect(auth, provider);
+ * // This will trigger a full page redirect away from your app
+ *
+ * // After returning from the redirect when your app initializes you can obtain the result
+ * const result = await getRedirectResult(auth);
+ * if (result) {
+ *   // This is the signed-in user
+ *   const user = result.user;
+ *   // This gives you a Twitter Access Token and Secret.
+ *   const credential = provider.credentialFromResult(auth, result);
+ *   const token = credential.accessToken;
+ *   const secret = credential.secret;
+ * }
+ * ```
+ *
+ * @example
+ * ```javascript
+ * // Sign in using a popup.
+ * const provider = new TwitterAuthProvider();
+ * const result = await signInWithPopup(auth, provider);
+ *
+ * // The signed-in user info.
+ * const user = result.user;
+ * // This gives you a Twitter Access Token and Secret.
+ * const credential = provider.credentialFromResult(auth, result);
+ * const token = credential.accessToken;
+ * const secret = credential.secret;
+ * ```
+ *
+ * @public
+ */
+
+
+exports.U = SAMLAuthProvider;
+
+class TwitterAuthProvider extends BaseOAuthProvider {
+  constructor() {
+    super("twitter.com"
+    /* TWITTER */
+    );
+  }
+  /**
+   * Creates a credential for Twitter.
+   *
+   * @param token - Twitter access token.
+   * @param secret - Twitter secret.
+   */
+
+
+  static credential(token, secret) {
+    return OAuthCredential._fromParams({
+      providerId: TwitterAuthProvider.PROVIDER_ID,
+      signInMethod: TwitterAuthProvider.TWITTER_SIGN_IN_METHOD,
+      oauthToken: token,
+      oauthTokenSecret: secret
+    });
+  }
+  /**
+   * Used to extract the underlying {@link OAuthCredential} from a {@link UserCredential}.
+   *
+   * @param userCredential - The user credential.
+   */
+
+
+  static credentialFromResult(userCredential) {
+    return TwitterAuthProvider.credentialFromTaggedObject(userCredential);
+  }
+  /**
+   * Used to extract the underlying {@link OAuthCredential} from a {@link AuthError} which was
+   * thrown during a sign-in, link, or reauthenticate operation.
+   *
+   * @param userCredential - The user credential.
+   */
+
+
+  static credentialFromError(error) {
+    return TwitterAuthProvider.credentialFromTaggedObject(error.customData || {});
+  }
+
+  static credentialFromTaggedObject({
+    _tokenResponse: tokenResponse
+  }) {
+    if (!tokenResponse) {
+      return null;
+    }
+
+    const {
+      oauthAccessToken,
+      oauthTokenSecret
+    } = tokenResponse;
+
+    if (!oauthAccessToken || !oauthTokenSecret) {
+      return null;
+    }
+
+    try {
+      return TwitterAuthProvider.credential(oauthAccessToken, oauthTokenSecret);
+    } catch (_a) {
+      return null;
+    }
+  }
+
+}
+/** Always set to {@link SignInMethod}.TWITTER. */
+
+
+exports.V = TwitterAuthProvider;
+TwitterAuthProvider.TWITTER_SIGN_IN_METHOD = "twitter.com"
+/* TWITTER */
+;
+/** Always set to {@link ProviderId}.TWITTER. */
+
+TwitterAuthProvider.PROVIDER_ID = "twitter.com"
+/* TWITTER */
+;
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+async function signUp(auth, request) {
+  return _performSignInRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:signUp"
+  /* SIGN_UP */
+  , _addTidIfNecessary(auth, request));
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+class UserCredentialImpl {
+  constructor(params) {
+    this.user = params.user;
+    this.providerId = params.providerId;
+    this._tokenResponse = params._tokenResponse;
+    this.operationType = params.operationType;
+  }
+
+  static async _fromIdTokenResponse(auth, operationType, idTokenResponse, isAnonymous = false) {
+    const user = await UserImpl._fromIdTokenResponse(auth, idTokenResponse, isAnonymous);
+    const providerId = providerIdForResponse(idTokenResponse);
+    const userCred = new UserCredentialImpl({
+      user,
+      providerId,
+      _tokenResponse: idTokenResponse,
+      operationType
+    });
+    return userCred;
+  }
+
+  static async _forOperation(user, operationType, response) {
+    await user._updateTokensIfNecessary(response,
+    /* reload */
+    true);
+    const providerId = providerIdForResponse(response);
+    return new UserCredentialImpl({
+      user,
+      providerId,
+      _tokenResponse: response,
+      operationType
+    });
+  }
+
+}
+
+function providerIdForResponse(response) {
+  if (response.providerId) {
+    return response.providerId;
+  }
+
+  if ('phoneNumber' in response) {
+    return "phone"
+    /* PHONE */
+    ;
+  }
+
+  return null;
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Asynchronously signs in as an anonymous user.
+ *
+ * @remarks
+ * If there is already an anonymous user signed in, that user will be returned; otherwise, a
+ * new anonymous user identity will be created and returned.
+ *
+ * @param auth - The {@link Auth} instance.
+ *
+ * @public
+ */
+
+
+async function signInAnonymously(auth) {
+  var _a;
+
+  const authInternal = _castAuth(auth);
+
+  await authInternal._initializationPromise;
+
+  if ((_a = authInternal.currentUser) === null || _a === void 0 ? void 0 : _a.isAnonymous) {
+    // If an anonymous user is already signed in, no need to sign them in again.
+    return new UserCredentialImpl({
+      user: authInternal.currentUser,
+      providerId: null,
+      operationType: "signIn"
+      /* SIGN_IN */
+
+    });
+  }
+
+  const response = await signUp(authInternal, {
+    returnSecureToken: true
+  });
+  const userCredential = await UserCredentialImpl._fromIdTokenResponse(authInternal, "signIn"
+  /* SIGN_IN */
+  , response, true);
+  await authInternal._updateCurrentUser(userCredential.user);
+  return userCredential;
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+class MultiFactorError extends _util.FirebaseError {
+  constructor(auth, error, operationType, user) {
+    var _a;
+
+    super(error.code, error.message);
+    this.operationType = operationType;
+    this.user = user;
+    this.name = 'FirebaseError'; // https://github.com/Microsoft/TypeScript-wiki/blob/master/Breaking-Changes.md#extending-built-ins-like-error-array-and-map-may-no-longer-work
+
+    Object.setPrototypeOf(this, MultiFactorError.prototype);
+    this.appName = auth.name;
+    this.code = error.code;
+    this.tenantId = (_a = auth.tenantId) !== null && _a !== void 0 ? _a : undefined;
+    this.serverResponse = error.customData.serverResponse;
+  }
+
+  static _fromErrorAndOperation(auth, error, operationType, user) {
+    return new MultiFactorError(auth, error, operationType, user);
+  }
+
+}
+
+function _processCredentialSavingMfaContextIfNecessary(auth, operationType, credential, user) {
+  const idTokenProvider = operationType === "reauthenticate"
+  /* REAUTHENTICATE */
+  ? credential._getReauthenticationResolver(auth) : credential._getIdTokenResponse(auth);
+  return idTokenProvider.catch(error => {
+    if (error.code === `auth/${"multi-factor-auth-required"
+    /* MFA_REQUIRED */
+    }`) {
+      throw MultiFactorError._fromErrorAndOperation(auth, error, operationType, user);
+    }
+
+    throw error;
+  });
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Takes a set of UserInfo provider data and converts it to a set of names
+ */
+
+
+function providerDataAsNames(providerData) {
+  return new Set(providerData.map(({
+    providerId
+  }) => providerId).filter(pid => !!pid));
+}
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Unlinks a provider from a user account.
+ *
+ * @param user - The user.
+ * @param providerId - The provider to unlink.
+ *
+ * @public
+ */
+
+
+async function unlink(user, providerId) {
+  const userInternal = (0, _util.getModularInstance)(user);
+  await _assertLinkedStatus(true, userInternal, providerId);
+  const {
+    providerUserInfo
+  } = await deleteLinkedAccounts(userInternal.auth, {
+    idToken: await userInternal.getIdToken(),
+    deleteProvider: [providerId]
+  });
+  const providersLeft = providerDataAsNames(providerUserInfo || []);
+  userInternal.providerData = userInternal.providerData.filter(pd => providersLeft.has(pd.providerId));
+
+  if (!providersLeft.has("phone"
+  /* PHONE */
+  )) {
+    userInternal.phoneNumber = null;
+  }
+
+  await userInternal.auth._persistUserIfCurrent(userInternal);
+  return userInternal;
+}
+
+async function _link$1(user, credential, bypassAuthState = false) {
+  const response = await _logoutIfInvalidated(user, credential._linkToIdToken(user.auth, await user.getIdToken()), bypassAuthState);
+  return UserCredentialImpl._forOperation(user, "link"
+  /* LINK */
+  , response);
+}
+
+async function _assertLinkedStatus(expected, user, provider) {
+  await _reloadWithoutSaving(user);
+  const providerIds = providerDataAsNames(user.providerData);
+  const code = expected === false ? "provider-already-linked"
+  /* PROVIDER_ALREADY_LINKED */
+  : "no-such-provider"
+  /* NO_SUCH_PROVIDER */
+  ;
+
+  _assert(providerIds.has(provider) === expected, user.auth, code);
+}
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+async function _reauthenticate(user, credential, bypassAuthState = false) {
+  const {
+    auth
+  } = user;
+  const operationType = "reauthenticate"
+  /* REAUTHENTICATE */
+  ;
+
+  try {
+    const response = await _logoutIfInvalidated(user, _processCredentialSavingMfaContextIfNecessary(auth, operationType, credential, user), bypassAuthState);
+
+    _assert(response.idToken, auth, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    const parsed = _parseToken(response.idToken);
+
+    _assert(parsed, auth, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    const {
+      sub: localId
+    } = parsed;
+
+    _assert(user.uid === localId, auth, "user-mismatch"
+    /* USER_MISMATCH */
+    );
+
+    return UserCredentialImpl._forOperation(user, operationType, response);
+  } catch (e) {
+    // Convert user deleted error into user mismatch
+    if ((e === null || e === void 0 ? void 0 : e.code) === `auth/${"user-not-found"
+    /* USER_DELETED */
+    }`) {
+      _fail(auth, "user-mismatch"
+      /* USER_MISMATCH */
+      );
+    }
+
+    throw e;
+  }
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+async function _signInWithCredential(auth, credential, bypassAuthState = false) {
+  const operationType = "signIn"
+  /* SIGN_IN */
+  ;
+  const response = await _processCredentialSavingMfaContextIfNecessary(auth, operationType, credential);
+  const userCredential = await UserCredentialImpl._fromIdTokenResponse(auth, operationType, response);
+
+  if (!bypassAuthState) {
+    await auth._updateCurrentUser(userCredential.user);
+  }
+
+  return userCredential;
+}
+/**
+ * Asynchronously signs in with the given credentials.
+ *
+ * @remarks
+ * An {@link AuthProvider} can be used to generate the credential.
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param credential - The auth credential.
+ *
+ * @public
+ */
+
+
+async function signInWithCredential(auth, credential) {
+  return _signInWithCredential(_castAuth(auth), credential);
+}
+/**
+ * Links the user account with the given credentials.
+ *
+ * @remarks
+ * An {@link AuthProvider} can be used to generate the credential.
+ *
+ * @param user - The user.
+ * @param credential - The auth credential.
+ *
+ * @public
+ */
+
+
+async function linkWithCredential(user, credential) {
+  const userInternal = (0, _util.getModularInstance)(user);
+  await _assertLinkedStatus(false, userInternal, credential.providerId);
+  return _link$1(userInternal, credential);
+}
+/**
+ * Re-authenticates a user using a fresh credential.
+ *
+ * @remarks
+ * Use before operations such as {@link updatePassword} that require tokens from recent sign-in
+ * attempts. This method can be used to recover from a `CREDENTIAL_TOO_OLD_LOGIN_AGAIN` error.
+ *
+ * @param user - The user.
+ * @param credential - The auth credential.
+ *
+ * @public
+ */
+
+
+async function reauthenticateWithCredential(user, credential) {
+  return _reauthenticate((0, _util.getModularInstance)(user), credential);
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+async function signInWithCustomToken$1(auth, request) {
+  return _performSignInRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:signInWithCustomToken"
+  /* SIGN_IN_WITH_CUSTOM_TOKEN */
+  , _addTidIfNecessary(auth, request));
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Asynchronously signs in using a custom token.
+ *
+ * @remarks
+ * Custom tokens are used to integrate Firebase Auth with existing auth systems, and must
+ * be generated by an auth backend using the
+ * {@link https://firebase.google.com/docs/reference/admin/node/admin.auth.Auth#createcustomtoken | createCustomToken}
+ * method in the {@link https://firebase.google.com/docs/auth/admin | Admin SDK} .
+ *
+ * Fails with an error if the token is invalid, expired, or not accepted by the Firebase Auth service.
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param customToken - The custom token to sign in with.
+ *
+ * @public
+ */
+
+
+async function signInWithCustomToken(auth, customToken) {
+  const authInternal = _castAuth(auth);
+
+  const response = await signInWithCustomToken$1(authInternal, {
+    token: customToken,
+    returnSecureToken: true
+  });
+  const cred = await UserCredentialImpl._fromIdTokenResponse(authInternal, "signIn"
+  /* SIGN_IN */
+  , response);
+  await authInternal._updateCurrentUser(cred.user);
+  return cred;
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+class MultiFactorInfoImpl {
+  constructor(factorId, response) {
+    this.factorId = factorId;
+    this.uid = response.mfaEnrollmentId;
+    this.enrollmentTime = new Date(response.enrolledAt).toUTCString();
+    this.displayName = response.displayName;
+  }
+
+  static _fromServerResponse(auth, enrollment) {
+    if ('phoneInfo' in enrollment) {
+      return PhoneMultiFactorInfo._fromServerResponse(auth, enrollment);
+    }
+
+    return _fail(auth, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+  }
+
+}
+
+class PhoneMultiFactorInfo extends MultiFactorInfoImpl {
+  constructor(response) {
+    super("phone"
+    /* PHONE */
+    , response);
+    this.phoneNumber = response.phoneInfo;
+  }
+
+  static _fromServerResponse(_auth, enrollment) {
+    return new PhoneMultiFactorInfo(enrollment);
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+function _setActionCodeSettingsOnRequest(auth, request, actionCodeSettings) {
+  var _a;
+
+  _assert(((_a = actionCodeSettings.url) === null || _a === void 0 ? void 0 : _a.length) > 0, auth, "invalid-continue-uri"
+  /* INVALID_CONTINUE_URI */
+  );
+
+  _assert(typeof actionCodeSettings.dynamicLinkDomain === 'undefined' || actionCodeSettings.dynamicLinkDomain.length > 0, auth, "invalid-dynamic-link-domain"
+  /* INVALID_DYNAMIC_LINK_DOMAIN */
+  );
+
+  request.continueUrl = actionCodeSettings.url;
+  request.dynamicLinkDomain = actionCodeSettings.dynamicLinkDomain;
+  request.canHandleCodeInApp = actionCodeSettings.handleCodeInApp;
+
+  if (actionCodeSettings.iOS) {
+    _assert(actionCodeSettings.iOS.bundleId.length > 0, auth, "missing-ios-bundle-id"
+    /* MISSING_IOS_BUNDLE_ID */
+    );
+
+    request.iosBundleId = actionCodeSettings.iOS.bundleId;
+  }
+
+  if (actionCodeSettings.android) {
+    _assert(actionCodeSettings.android.packageName.length > 0, auth, "missing-android-pkg-name"
+    /* MISSING_ANDROID_PACKAGE_NAME */
+    );
+
+    request.androidInstallApp = actionCodeSettings.android.installApp;
+    request.androidMinimumVersionCode = actionCodeSettings.android.minimumVersion;
+    request.androidPackageName = actionCodeSettings.android.packageName;
+  }
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Sends a password reset email to the given email address.
+ *
+ * @remarks
+ * To complete the password reset, call {@link confirmPasswordReset} with the code supplied in
+ * the email sent to the user, along with the new password specified by the user.
+ *
+ * @example
+ * ```javascript
+ * const actionCodeSettings = {
+ *   url: 'https://www.example.com/?email=user@example.com',
+ *   iOS: {
+ *      bundleId: 'com.example.ios'
+ *   },
+ *   android: {
+ *     packageName: 'com.example.android',
+ *     installApp: true,
+ *     minimumVersion: '12'
+ *   },
+ *   handleCodeInApp: true
+ * };
+ * await sendPasswordResetEmail(auth, 'user@example.com', actionCodeSettings);
+ * // Obtain code from user.
+ * await confirmPasswordReset('user@example.com', code);
+ * ```
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param email - The user's email address.
+ * @param actionCodeSettings - The {@link ActionCodeSettings}.
+ *
+ * @public
+ */
+
+
+async function sendPasswordResetEmail(auth, email, actionCodeSettings) {
+  const authModular = (0, _util.getModularInstance)(auth);
+  const request = {
+    requestType: "PASSWORD_RESET"
+    /* PASSWORD_RESET */
+    ,
+    email
+  };
+
+  if (actionCodeSettings) {
+    _setActionCodeSettingsOnRequest(authModular, request, actionCodeSettings);
+  }
+
+  await sendPasswordResetEmail$1(authModular, request);
+}
+/**
+ * Completes the password reset process, given a confirmation code and new password.
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param oobCode - A confirmation code sent to the user.
+ * @param newPassword - The new password.
+ *
+ * @public
+ */
+
+
+async function confirmPasswordReset(auth, oobCode, newPassword) {
+  await resetPassword((0, _util.getModularInstance)(auth), {
+    oobCode,
+    newPassword
+  }); // Do not return the email.
+}
+/**
+ * Applies a verification code sent to the user by email or other out-of-band mechanism.
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param oobCode - A verification code sent to the user.
+ *
+ * @public
+ */
+
+
+async function applyActionCode(auth, oobCode) {
+  await applyActionCode$1((0, _util.getModularInstance)(auth), {
+    oobCode
+  });
+}
+/**
+ * Checks a verification code sent to the user by email or other out-of-band mechanism.
+ *
+ * @returns metadata about the code.
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param oobCode - A verification code sent to the user.
+ *
+ * @public
+ */
+
+
+async function checkActionCode(auth, oobCode) {
+  const authModular = (0, _util.getModularInstance)(auth);
+  const response = await resetPassword(authModular, {
+    oobCode
+  }); // Email could be empty only if the request type is EMAIL_SIGNIN or
+  // VERIFY_AND_CHANGE_EMAIL.
+  // New email should not be empty if the request type is
+  // VERIFY_AND_CHANGE_EMAIL.
+  // Multi-factor info could not be empty if the request type is
+  // REVERT_SECOND_FACTOR_ADDITION.
+
+  const operation = response.requestType;
+
+  _assert(operation, authModular, "internal-error"
+  /* INTERNAL_ERROR */
+  );
+
+  switch (operation) {
+    case "EMAIL_SIGNIN"
+    /* EMAIL_SIGNIN */
+    :
+      break;
+
+    case "VERIFY_AND_CHANGE_EMAIL"
+    /* VERIFY_AND_CHANGE_EMAIL */
+    :
+      _assert(response.newEmail, authModular, "internal-error"
+      /* INTERNAL_ERROR */
+      );
+
+      break;
+
+    case "REVERT_SECOND_FACTOR_ADDITION"
+    /* REVERT_SECOND_FACTOR_ADDITION */
+    :
+      _assert(response.mfaInfo, authModular, "internal-error"
+      /* INTERNAL_ERROR */
+      );
+
+    // fall through
+
+    default:
+      _assert(response.email, authModular, "internal-error"
+      /* INTERNAL_ERROR */
+      );
+
+  } // The multi-factor info for revert second factor addition
+
+
+  let multiFactorInfo = null;
+
+  if (response.mfaInfo) {
+    multiFactorInfo = MultiFactorInfoImpl._fromServerResponse(_castAuth(authModular), response.mfaInfo);
+  }
+
+  return {
+    data: {
+      email: (response.requestType === "VERIFY_AND_CHANGE_EMAIL"
+      /* VERIFY_AND_CHANGE_EMAIL */
+      ? response.newEmail : response.email) || null,
+      previousEmail: (response.requestType === "VERIFY_AND_CHANGE_EMAIL"
+      /* VERIFY_AND_CHANGE_EMAIL */
+      ? response.email : response.newEmail) || null,
+      multiFactorInfo
+    },
+    operation
+  };
+}
+/**
+ * Checks a password reset code sent to the user by email or other out-of-band mechanism.
+ *
+ * @returns the user's email address if valid.
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param code - A verification code sent to the user.
+ *
+ * @public
+ */
+
+
+async function verifyPasswordResetCode(auth, code) {
+  const {
+    data
+  } = await checkActionCode((0, _util.getModularInstance)(auth), code); // Email should always be present since a code was sent to it
+
+  return data.email;
+}
+/**
+ * Creates a new user account associated with the specified email address and password.
+ *
+ * @remarks
+ * On successful creation of the user account, this user will also be signed in to your application.
+ *
+ * User account creation can fail if the account already exists or the password is invalid.
+ *
+ * Note: The email address acts as a unique identifier for the user and enables an email-based
+ * password reset. This function will create a new user account and set the initial user password.
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param email - The user's email address.
+ * @param password - The user's chosen password.
+ *
+ * @public
+ */
+
+
+async function createUserWithEmailAndPassword(auth, email, password) {
+  const authInternal = _castAuth(auth);
+
+  const response = await signUp(authInternal, {
+    returnSecureToken: true,
+    email,
+    password
+  });
+  const userCredential = await UserCredentialImpl._fromIdTokenResponse(authInternal, "signIn"
+  /* SIGN_IN */
+  , response);
+  await authInternal._updateCurrentUser(userCredential.user);
+  return userCredential;
+}
+/**
+ * Asynchronously signs in using an email and password.
+ *
+ * @remarks
+ * Fails with an error if the email address and password do not match.
+ *
+ * Note: The user's password is NOT the password used to access the user's email account. The
+ * email address serves as a unique identifier for the user, and the password is used to access
+ * the user's account in your Firebase project. See also: {@link createUserWithEmailAndPassword}.
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param email - The users email address.
+ * @param password - The users password.
+ *
+ * @public
+ */
+
+
+function signInWithEmailAndPassword(auth, email, password) {
+  return signInWithCredential((0, _util.getModularInstance)(auth), EmailAuthProvider.credential(email, password));
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Sends a sign-in email link to the user with the specified email.
+ *
+ * @remarks
+ * The sign-in operation has to always be completed in the app unlike other out of band email
+ * actions (password reset and email verifications). This is because, at the end of the flow,
+ * the user is expected to be signed in and their Auth state persisted within the app.
+ *
+ * To complete sign in with the email link, call {@link signInWithEmailLink} with the email
+ * address and the email link supplied in the email sent to the user.
+ *
+ * @example
+ * ```javascript
+ * const actionCodeSettings = {
+ *   url: 'https://www.example.com/?email=user@example.com',
+ *   iOS: {
+ *      bundleId: 'com.example.ios'
+ *   },
+ *   android: {
+ *     packageName: 'com.example.android',
+ *     installApp: true,
+ *     minimumVersion: '12'
+ *   },
+ *   handleCodeInApp: true
+ * };
+ * await sendSignInLinkToEmail(auth, 'user@example.com', actionCodeSettings);
+ * // Obtain emailLink from the user.
+ * if(isSignInWithEmailLink(auth, emailLink)) {
+ *   await signInWithEmailLink('user@example.com', 'user@example.com', emailLink);
+ * }
+ * ```
+ *
+ * @param authInternal - The {@link Auth} instance.
+ * @param email - The user's email address.
+ * @param actionCodeSettings - The {@link ActionCodeSettings}.
+ *
+ * @public
+ */
+
+
+async function sendSignInLinkToEmail(auth, email, actionCodeSettings) {
+  const authModular = (0, _util.getModularInstance)(auth);
+  const request = {
+    requestType: "EMAIL_SIGNIN"
+    /* EMAIL_SIGNIN */
+    ,
+    email
+  };
+
+  _assert(actionCodeSettings.handleCodeInApp, authModular, "argument-error"
+  /* ARGUMENT_ERROR */
+  );
+
+  if (actionCodeSettings) {
+    _setActionCodeSettingsOnRequest(authModular, request, actionCodeSettings);
+  }
+
+  await sendSignInLinkToEmail$1(authModular, request);
+}
+/**
+ * Checks if an incoming link is a sign-in with email link suitable for {@link signInWithEmailLink}.
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param emailLink - The link sent to the user's email address.
+ *
+ * @public
+ */
+
+
+function isSignInWithEmailLink(auth, emailLink) {
+  const actionCodeUrl = ActionCodeURL.parseLink(emailLink);
+  return (actionCodeUrl === null || actionCodeUrl === void 0 ? void 0 : actionCodeUrl.operation) === "EMAIL_SIGNIN"
+  /* EMAIL_SIGNIN */
+  ;
+}
+/**
+ * Asynchronously signs in using an email and sign-in email link.
+ *
+ * @remarks
+ * If no link is passed, the link is inferred from the current URL.
+ *
+ * Fails with an error if the email address is invalid or OTP in email link expires.
+ *
+ * Note: Confirm the link is a sign-in email link before calling this method firebase.auth.Auth.isSignInWithEmailLink.
+ *
+ * @example
+ * ```javascript
+ * const actionCodeSettings = {
+ *   url: 'https://www.example.com/?email=user@example.com',
+ *   iOS: {
+ *      bundleId: 'com.example.ios'
+ *   },
+ *   android: {
+ *     packageName: 'com.example.android',
+ *     installApp: true,
+ *     minimumVersion: '12'
+ *   },
+ *   handleCodeInApp: true
+ * };
+ * await sendSignInLinkToEmail(auth, 'user@example.com', actionCodeSettings);
+ * // Obtain emailLink from the user.
+ * if(isSignInWithEmailLink(auth, emailLink)) {
+ *   await signInWithEmailLink('user@example.com', 'user@example.com', emailLink);
+ * }
+ * ```
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param email - The user's email address.
+ * @param emailLink - The link sent to the user's email address.
+ *
+ * @public
+ */
+
+
+async function signInWithEmailLink(auth, email, emailLink) {
+  const authModular = (0, _util.getModularInstance)(auth);
+  const credential = EmailAuthProvider.credentialWithLink(email, emailLink || _getCurrentUrl()); // Check if the tenant ID in the email link matches the tenant ID on Auth
+  // instance.
+
+  _assert(credential._tenantId === (authModular.tenantId || null), authModular, "tenant-id-mismatch"
+  /* TENANT_ID_MISMATCH */
+  );
+
+  return signInWithCredential(authModular, credential);
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+async function createAuthUri(auth, request) {
+  return _performApiRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:createAuthUri"
+  /* CREATE_AUTH_URI */
+  , _addTidIfNecessary(auth, request));
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Gets the list of possible sign in methods for the given email address.
+ *
+ * @remarks
+ * This is useful to differentiate methods of sign-in for the same provider, eg.
+ * {@link EmailAuthProvider} which has 2 methods of sign-in,
+ * {@link SignInMethod}.EMAIL_PASSWORD and
+ * {@link SignInMethod}.EMAIL_LINK.
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param email - The user's email address.
+ *
+ * @public
+ */
+
+
+async function fetchSignInMethodsForEmail(auth, email) {
+  // createAuthUri returns an error if continue URI is not http or https.
+  // For environments like Cordova, Chrome extensions, native frameworks, file
+  // systems, etc, use http://localhost as continue URL.
+  const continueUri = _isHttpOrHttps() ? _getCurrentUrl() : 'http://localhost';
+  const request = {
+    identifier: email,
+    continueUri
+  };
+  const {
+    signinMethods
+  } = await createAuthUri((0, _util.getModularInstance)(auth), request);
+  return signinMethods || [];
+}
+/**
+ * Sends a verification email to a user.
+ *
+ * @remarks
+ * The verification process is completed by calling {@link applyActionCode}.
+ *
+ * @example
+ * ```javascript
+ * const actionCodeSettings = {
+ *   url: 'https://www.example.com/?email=user@example.com',
+ *   iOS: {
+ *      bundleId: 'com.example.ios'
+ *   },
+ *   android: {
+ *     packageName: 'com.example.android',
+ *     installApp: true,
+ *     minimumVersion: '12'
+ *   },
+ *   handleCodeInApp: true
+ * };
+ * await sendEmailVerification(user, actionCodeSettings);
+ * // Obtain code from the user.
+ * await applyActionCode(auth, code);
+ * ```
+ *
+ * @param user - The user.
+ * @param actionCodeSettings - The {@link ActionCodeSettings}.
+ *
+ * @public
+ */
+
+
+async function sendEmailVerification(user, actionCodeSettings) {
+  const userInternal = (0, _util.getModularInstance)(user);
+  const idToken = await user.getIdToken();
+  const request = {
+    requestType: "VERIFY_EMAIL"
+    /* VERIFY_EMAIL */
+    ,
+    idToken
+  };
+
+  if (actionCodeSettings) {
+    _setActionCodeSettingsOnRequest(userInternal.auth, request, actionCodeSettings);
+  }
+
+  const {
+    email
+  } = await sendEmailVerification$1(userInternal.auth, request);
+
+  if (email !== user.email) {
+    await user.reload();
+  }
+}
+/**
+ * Sends a verification email to a new email address.
+ *
+ * @remarks
+ * The user's email will be updated to the new one after being verified.
+ *
+ * If you have a custom email action handler, you can complete the verification process by calling
+ * {@link applyActionCode}.
+ *
+ * @example
+ * ```javascript
+ * const actionCodeSettings = {
+ *   url: 'https://www.example.com/?email=user@example.com',
+ *   iOS: {
+ *      bundleId: 'com.example.ios'
+ *   },
+ *   android: {
+ *     packageName: 'com.example.android',
+ *     installApp: true,
+ *     minimumVersion: '12'
+ *   },
+ *   handleCodeInApp: true
+ * };
+ * await verifyBeforeUpdateEmail(user, 'newemail@example.com', actionCodeSettings);
+ * // Obtain code from the user.
+ * await applyActionCode(auth, code);
+ * ```
+ *
+ * @param user - The user.
+ * @param newEmail - The new email address to be verified before update.
+ * @param actionCodeSettings - The {@link ActionCodeSettings}.
+ *
+ * @public
+ */
+
+
+async function verifyBeforeUpdateEmail(user, newEmail, actionCodeSettings) {
+  const userInternal = (0, _util.getModularInstance)(user);
+  const idToken = await user.getIdToken();
+  const request = {
+    requestType: "VERIFY_AND_CHANGE_EMAIL"
+    /* VERIFY_AND_CHANGE_EMAIL */
+    ,
+    idToken,
+    newEmail
+  };
+
+  if (actionCodeSettings) {
+    _setActionCodeSettingsOnRequest(userInternal.auth, request, actionCodeSettings);
+  }
+
+  const {
+    email
+  } = await verifyAndChangeEmail(userInternal.auth, request);
+
+  if (email !== user.email) {
+    // If the local copy of the email on user is outdated, reload the
+    // user.
+    await user.reload();
+  }
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+async function updateProfile$1(auth, request) {
+  return _performApiRequest(auth, "POST"
+  /* POST */
+  , "/v1/accounts:update"
+  /* SET_ACCOUNT_INFO */
+  , request);
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Updates a user's profile data.
+ *
+ * @param user - The user.
+ * @param profile - The profile's `displayName` and `photoURL` to update.
+ *
+ * @public
+ */
+
+
+async function updateProfile(user, {
+  displayName,
+  photoURL: photoUrl
+}) {
+  if (displayName === undefined && photoUrl === undefined) {
+    return;
+  }
+
+  const userInternal = (0, _util.getModularInstance)(user);
+  const idToken = await userInternal.getIdToken();
+  const profileRequest = {
+    idToken,
+    displayName,
+    photoUrl,
+    returnSecureToken: true
+  };
+  const response = await _logoutIfInvalidated(userInternal, updateProfile$1(userInternal.auth, profileRequest));
+  userInternal.displayName = response.displayName || null;
+  userInternal.photoURL = response.photoUrl || null; // Update the password provider as well
+
+  const passwordProvider = userInternal.providerData.find(({
+    providerId
+  }) => providerId === "password"
+  /* PASSWORD */
+  );
+
+  if (passwordProvider) {
+    passwordProvider.displayName = userInternal.displayName;
+    passwordProvider.photoURL = userInternal.photoURL;
+  }
+
+  await userInternal._updateTokensIfNecessary(response);
+}
+/**
+ * Updates the user's email address.
+ *
+ * @remarks
+ * An email will be sent to the original email address (if it was set) that allows to revoke the
+ * email address change, in order to protect them from account hijacking.
+ *
+ * Important: this is a security sensitive operation that requires the user to have recently signed
+ * in. If this requirement isn't met, ask the user to authenticate again and then call
+ * {@link reauthenticateWithCredential}.
+ *
+ * @param user - The user.
+ * @param newEmail - The new email address.
+ *
+ * @public
+ */
+
+
+function updateEmail(user, newEmail) {
+  return updateEmailOrPassword((0, _util.getModularInstance)(user), newEmail, null);
+}
+/**
+ * Updates the user's password.
+ *
+ * @remarks
+ * Important: this is a security sensitive operation that requires the user to have recently signed
+ * in. If this requirement isn't met, ask the user to authenticate again and then call
+ * {@link reauthenticateWithCredential}.
+ *
+ * @param user - The user.
+ * @param newPassword - The new password.
+ *
+ * @public
+ */
+
+
+function updatePassword(user, newPassword) {
+  return updateEmailOrPassword((0, _util.getModularInstance)(user), null, newPassword);
+}
+
+async function updateEmailOrPassword(user, email, password) {
+  const {
+    auth
+  } = user;
+  const idToken = await user.getIdToken();
+  const request = {
+    idToken,
+    returnSecureToken: true
+  };
+
+  if (email) {
+    request.email = email;
+  }
+
+  if (password) {
+    request.password = password;
+  }
+
+  const response = await _logoutIfInvalidated(user, updateEmailPassword(auth, request));
+  await user._updateTokensIfNecessary(response,
+  /* reload */
+  true);
+}
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Parse the `AdditionalUserInfo` from the ID token response.
+ *
+ */
+
+
+function _fromIdTokenResponse(idTokenResponse) {
+  var _a, _b;
+
+  if (!idTokenResponse) {
+    return null;
+  }
+
+  const {
+    providerId
+  } = idTokenResponse;
+  const profile = idTokenResponse.rawUserInfo ? JSON.parse(idTokenResponse.rawUserInfo) : {};
+  const isNewUser = idTokenResponse.isNewUser || idTokenResponse.kind === "identitytoolkit#SignupNewUserResponse"
+  /* SignupNewUser */
+  ;
+
+  if (!providerId && (idTokenResponse === null || idTokenResponse === void 0 ? void 0 : idTokenResponse.idToken)) {
+    const signInProvider = (_b = (_a = _parseToken(idTokenResponse.idToken)) === null || _a === void 0 ? void 0 : _a.firebase) === null || _b === void 0 ? void 0 : _b['sign_in_provider'];
+
+    if (signInProvider) {
+      const filteredProviderId = signInProvider !== "anonymous"
+      /* ANONYMOUS */
+      && signInProvider !== "custom"
+      /* CUSTOM */
+      ? signInProvider : null; // Uses generic class in accordance with the legacy SDK.
+
+      return new GenericAdditionalUserInfo(isNewUser, filteredProviderId);
+    }
+  }
+
+  if (!providerId) {
+    return null;
+  }
+
+  switch (providerId) {
+    case "facebook.com"
+    /* FACEBOOK */
+    :
+      return new FacebookAdditionalUserInfo(isNewUser, profile);
+
+    case "github.com"
+    /* GITHUB */
+    :
+      return new GithubAdditionalUserInfo(isNewUser, profile);
+
+    case "google.com"
+    /* GOOGLE */
+    :
+      return new GoogleAdditionalUserInfo(isNewUser, profile);
+
+    case "twitter.com"
+    /* TWITTER */
+    :
+      return new TwitterAdditionalUserInfo(isNewUser, profile, idTokenResponse.screenName || null);
+
+    case "custom"
+    /* CUSTOM */
+    :
+    case "anonymous"
+    /* ANONYMOUS */
+    :
+      return new GenericAdditionalUserInfo(isNewUser, null);
+
+    default:
+      return new GenericAdditionalUserInfo(isNewUser, providerId, profile);
+  }
+}
+
+class GenericAdditionalUserInfo {
+  constructor(isNewUser, providerId, profile = {}) {
+    this.isNewUser = isNewUser;
+    this.providerId = providerId;
+    this.profile = profile;
+  }
+
+}
+
+class FederatedAdditionalUserInfoWithUsername extends GenericAdditionalUserInfo {
+  constructor(isNewUser, providerId, profile, username) {
+    super(isNewUser, providerId, profile);
+    this.username = username;
+  }
+
+}
+
+class FacebookAdditionalUserInfo extends GenericAdditionalUserInfo {
+  constructor(isNewUser, profile) {
+    super(isNewUser, "facebook.com"
+    /* FACEBOOK */
+    , profile);
+  }
+
+}
+
+class GithubAdditionalUserInfo extends FederatedAdditionalUserInfoWithUsername {
+  constructor(isNewUser, profile) {
+    super(isNewUser, "github.com"
+    /* GITHUB */
+    , profile, typeof (profile === null || profile === void 0 ? void 0 : profile.login) === 'string' ? profile === null || profile === void 0 ? void 0 : profile.login : null);
+  }
+
+}
+
+class GoogleAdditionalUserInfo extends GenericAdditionalUserInfo {
+  constructor(isNewUser, profile) {
+    super(isNewUser, "google.com"
+    /* GOOGLE */
+    , profile);
+  }
+
+}
+
+class TwitterAdditionalUserInfo extends FederatedAdditionalUserInfoWithUsername {
+  constructor(isNewUser, profile, screenName) {
+    super(isNewUser, "twitter.com"
+    /* TWITTER */
+    , profile, screenName);
+  }
+
+}
+/**
+ * Extracts provider specific {@link AdditionalUserInfo} for the given credential.
+ *
+ * @param userCredential - The user credential.
+ *
+ * @public
+ */
+
+
+function getAdditionalUserInfo(userCredential) {
+  const {
+    user,
+    _tokenResponse
+  } = userCredential;
+
+  if (user.isAnonymous && !_tokenResponse) {
+    // Handle the special case where signInAnonymously() gets called twice.
+    // No network call is made so there's nothing to actually fill this in
+    return {
+      providerId: null,
+      isNewUser: false,
+      profile: null
+    };
+  }
+
+  return _fromIdTokenResponse(_tokenResponse);
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+// Non-optional auth methods.
+
+/**
+ * Changes the type of persistence on the {@link Auth} instance for the currently saved
+ * `Auth` session and applies this type of persistence for future sign-in requests, including
+ * sign-in with redirect requests.
+ *
+ * @remarks
+ * This makes it easy for a user signing in to specify whether their session should be
+ * remembered or not. It also makes it easier to never persist the `Auth` state for applications
+ * that are shared by other users or have sensitive data.
+ *
+ * @example
+ * ```javascript
+ * setPersistence(auth, browserSessionPersistence);
+ * ```
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param persistence - The {@link Persistence} to use.
+ * @returns A `Promise` that resolves once the persistence change has completed
+ *
+ * @public
+ */
+
+
+function setPersistence(auth, persistence) {
+  return (0, _util.getModularInstance)(auth).setPersistence(persistence);
+}
+/**
+ * Adds an observer for changes to the signed-in user's ID token, which includes sign-in,
+ * sign-out, and token refresh events.
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param nextOrObserver - callback triggered on change.
+ * @param error - callback triggered on error.
+ * @param completed - callback triggered when observer is removed.
+ *
+ * @public
+ */
+
+
+function onIdTokenChanged(auth, nextOrObserver, error, completed) {
+  return (0, _util.getModularInstance)(auth).onIdTokenChanged(nextOrObserver, error, completed);
+}
+/**
+ * Adds an observer for changes to the user's sign-in state.
+ *
+ * @remarks
+ * To keep the old behavior, see {@link onIdTokenChanged}.
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param nextOrObserver - callback triggered on change.
+ * @param error - callback triggered on error.
+ * @param completed - callback triggered when observer is removed.
+ *
+ * @public
+ */
+
+
+function onAuthStateChanged(auth, nextOrObserver, error, completed) {
+  return (0, _util.getModularInstance)(auth).onAuthStateChanged(nextOrObserver, error, completed);
+}
+/**
+ * Sets the current language to the default device/browser preference.
+ *
+ * @param auth - The {@link Auth} instance.
+ *
+ * @public
+ */
+
+
+function useDeviceLanguage(auth) {
+  (0, _util.getModularInstance)(auth).useDeviceLanguage();
+}
+/**
+ * Asynchronously sets the provided user as {@link Auth.currentUser} on the
+ * {@link Auth} instance.
+ *
+ * @remarks
+ * A new instance copy of the user provided will be made and set as currentUser.
+ *
+ * This will trigger {@link onAuthStateChanged} and {@link onIdTokenChanged} listeners
+ * like other sign in methods.
+ *
+ * The operation fails with an error if the user to be updated belongs to a different Firebase
+ * project.
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param user - The new {@link User}.
+ *
+ * @public
+ */
+
+
+function updateCurrentUser(auth, user) {
+  return (0, _util.getModularInstance)(auth).updateCurrentUser(user);
+}
+/**
+ * Signs out the current user.
+ *
+ * @param auth - The {@link Auth} instance.
+ *
+ * @public
+ */
+
+
+function signOut(auth) {
+  return (0, _util.getModularInstance)(auth).signOut();
+}
+/**
+ * Deletes and signs out the user.
+ *
+ * @remarks
+ * Important: this is a security-sensitive operation that requires the user to have recently
+ * signed in. If this requirement isn't met, ask the user to authenticate again and then call
+ * {@link reauthenticateWithCredential}.
+ *
+ * @param user - The user.
+ *
+ * @public
+ */
+
+
+async function deleteUser(user) {
+  return (0, _util.getModularInstance)(user).delete();
+}
+
+class MultiFactorSessionImpl {
+  constructor(type, credential) {
+    this.type = type;
+    this.credential = credential;
+  }
+
+  static _fromIdtoken(idToken) {
+    return new MultiFactorSessionImpl("enroll"
+    /* ENROLL */
+    , idToken);
+  }
+
+  static _fromMfaPendingCredential(mfaPendingCredential) {
+    return new MultiFactorSessionImpl("signin"
+    /* SIGN_IN */
+    , mfaPendingCredential);
+  }
+
+  toJSON() {
+    const key = this.type === "enroll"
+    /* ENROLL */
+    ? 'idToken' : 'pendingCredential';
+    return {
+      multiFactorSession: {
+        [key]: this.credential
+      }
+    };
+  }
+
+  static fromJSON(obj) {
+    var _a, _b;
+
+    if (obj === null || obj === void 0 ? void 0 : obj.multiFactorSession) {
+      if ((_a = obj.multiFactorSession) === null || _a === void 0 ? void 0 : _a.pendingCredential) {
+        return MultiFactorSessionImpl._fromMfaPendingCredential(obj.multiFactorSession.pendingCredential);
+      } else if ((_b = obj.multiFactorSession) === null || _b === void 0 ? void 0 : _b.idToken) {
+        return MultiFactorSessionImpl._fromIdtoken(obj.multiFactorSession.idToken);
+      }
+    }
+
+    return null;
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+class MultiFactorResolverImpl {
+  constructor(session, hints, signInResolver) {
+    this.session = session;
+    this.hints = hints;
+    this.signInResolver = signInResolver;
+  }
+  /** @internal */
+
+
+  static _fromError(authExtern, error) {
+    const auth = _castAuth(authExtern);
+
+    const hints = (error.serverResponse.mfaInfo || []).map(enrollment => MultiFactorInfoImpl._fromServerResponse(auth, enrollment));
+
+    _assert(error.serverResponse.mfaPendingCredential, auth, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    const session = MultiFactorSessionImpl._fromMfaPendingCredential(error.serverResponse.mfaPendingCredential);
+
+    return new MultiFactorResolverImpl(session, hints, async assertion => {
+      const mfaResponse = await assertion._process(auth, session); // Clear out the unneeded fields from the old login response
+
+      delete error.serverResponse.mfaInfo;
+      delete error.serverResponse.mfaPendingCredential; // Use in the new token & refresh token in the old response
+
+      const idTokenResponse = Object.assign(Object.assign({}, error.serverResponse), {
+        idToken: mfaResponse.idToken,
+        refreshToken: mfaResponse.refreshToken
+      }); // TODO: we should collapse this switch statement into UserCredentialImpl._forOperation and have it support the SIGN_IN case
+
+      switch (error.operationType) {
+        case "signIn"
+        /* SIGN_IN */
+        :
+          const userCredential = await UserCredentialImpl._fromIdTokenResponse(auth, error.operationType, idTokenResponse);
+          await auth._updateCurrentUser(userCredential.user);
+          return userCredential;
+
+        case "reauthenticate"
+        /* REAUTHENTICATE */
+        :
+          _assert(error.user, auth, "internal-error"
+          /* INTERNAL_ERROR */
+          );
+
+          return UserCredentialImpl._forOperation(error.user, error.operationType, idTokenResponse);
+
+        default:
+          _fail(auth, "internal-error"
+          /* INTERNAL_ERROR */
+          );
+
+      }
+    });
+  }
+
+  async resolveSignIn(assertionExtern) {
+    const assertion = assertionExtern;
+    return this.signInResolver(assertion);
+  }
+
+}
+/**
+ * Provides a {@link MultiFactorResolver} suitable for completion of a
+ * multi-factor flow.
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param error - The {@link MultiFactorError} raised during a sign-in, or
+ * reauthentication operation.
+ *
+ * @public
+ */
+
+
+function getMultiFactorResolver(auth, error) {
+  var _a;
+
+  const authModular = (0, _util.getModularInstance)(auth);
+  const errorInternal = error;
+
+  _assert(error.operationType, authModular, "argument-error"
+  /* ARGUMENT_ERROR */
+  );
+
+  _assert((_a = errorInternal.serverResponse) === null || _a === void 0 ? void 0 : _a.mfaPendingCredential, authModular, "argument-error"
+  /* ARGUMENT_ERROR */
+  );
+
+  return MultiFactorResolverImpl._fromError(authModular, errorInternal);
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+function startEnrollPhoneMfa(auth, request) {
+  return _performApiRequest(auth, "POST"
+  /* POST */
+  , "/v2/accounts/mfaEnrollment:start"
+  /* START_PHONE_MFA_ENROLLMENT */
+  , Object.assign({
+    tenantId: auth.tenantId
+  }, request));
+}
+
+function finalizeEnrollPhoneMfa(auth, request) {
+  return _performApiRequest(auth, "POST"
+  /* POST */
+  , "/v2/accounts/mfaEnrollment:finalize"
+  /* FINALIZE_PHONE_MFA_ENROLLMENT */
+  , Object.assign({
+    tenantId: auth.tenantId
+  }, request));
+}
+
+function withdrawMfa(auth, request) {
+  return _performApiRequest(auth, "POST"
+  /* POST */
+  , "/v2/accounts/mfaEnrollment:withdraw"
+  /* WITHDRAW_MFA */
+  , Object.assign({
+    tenantId: auth.tenantId
+  }, request));
+}
+
+class MultiFactorUserImpl {
+  constructor(user) {
+    this.user = user;
+    this.enrolledFactors = [];
+
+    user._onReload(userInfo => {
+      if (userInfo.mfaInfo) {
+        this.enrolledFactors = userInfo.mfaInfo.map(enrollment => MultiFactorInfoImpl._fromServerResponse(user.auth, enrollment));
+      }
+    });
+  }
+
+  static _fromUser(user) {
+    return new MultiFactorUserImpl(user);
+  }
+
+  async getSession() {
+    return MultiFactorSessionImpl._fromIdtoken(await this.user.getIdToken());
+  }
+
+  async enroll(assertionExtern, displayName) {
+    const assertion = assertionExtern;
+    const session = await this.getSession();
+    const finalizeMfaResponse = await _logoutIfInvalidated(this.user, assertion._process(this.user.auth, session, displayName)); // New tokens will be issued after enrollment of the new second factors.
+    // They need to be updated on the user.
+
+    await this.user._updateTokensIfNecessary(finalizeMfaResponse); // The user needs to be reloaded to get the new multi-factor information
+    // from server. USER_RELOADED event will be triggered and `enrolledFactors`
+    // will be updated.
+
+    return this.user.reload();
+  }
+
+  async unenroll(infoOrUid) {
+    const mfaEnrollmentId = typeof infoOrUid === 'string' ? infoOrUid : infoOrUid.uid;
+    const idToken = await this.user.getIdToken();
+    const idTokenResponse = await _logoutIfInvalidated(this.user, withdrawMfa(this.user.auth, {
+      idToken,
+      mfaEnrollmentId
+    })); // Remove the second factor from the user's list.
+
+    this.enrolledFactors = this.enrolledFactors.filter(({
+      uid
+    }) => uid !== mfaEnrollmentId); // Depending on whether the backend decided to revoke the user's session,
+    // the tokenResponse may be empty. If the tokens were not updated (and they
+    // are now invalid), reloading the user will discover this and invalidate
+    // the user's state accordingly.
+
+    await this.user._updateTokensIfNecessary(idTokenResponse);
+
+    try {
+      await this.user.reload();
+    } catch (e) {
+      if (e.code !== `auth/${"user-token-expired"
+      /* TOKEN_EXPIRED */
+      }`) {
+        throw e;
+      }
+    }
+  }
+
+}
+
+const multiFactorUserCache = new WeakMap();
+/**
+ * The {@link MultiFactorUser} corresponding to the user.
+ *
+ * @remarks
+ * This is used to access all multi-factor properties and operations related to the user.
+ *
+ * @param user - The user.
+ *
+ * @public
+ */
+
+function multiFactor(user) {
+  const userModular = (0, _util.getModularInstance)(user);
+
+  if (!multiFactorUserCache.has(userModular)) {
+    multiFactorUserCache.set(userModular, MultiFactorUserImpl._fromUser(userModular));
+  }
+
+  return multiFactorUserCache.get(userModular);
+}
+
+const STORAGE_AVAILABLE_KEY = '__sak';
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+// There are two different browser persistence types: local and session.
+// Both have the same implementation but use a different underlying storage
+// object.
+
+class BrowserPersistenceClass {
+  constructor(storage, type) {
+    this.storage = storage;
+    this.type = type;
+  }
+
+  _isAvailable() {
+    try {
+      if (!this.storage) {
+        return Promise.resolve(false);
+      }
+
+      this.storage.setItem(STORAGE_AVAILABLE_KEY, '1');
+      this.storage.removeItem(STORAGE_AVAILABLE_KEY);
+      return Promise.resolve(true);
+    } catch (_a) {
+      return Promise.resolve(false);
+    }
+  }
+
+  _set(key, value) {
+    this.storage.setItem(key, JSON.stringify(value));
+    return Promise.resolve();
+  }
+
+  _get(key) {
+    const json = this.storage.getItem(key);
+    return Promise.resolve(json ? JSON.parse(json) : null);
+  }
+
+  _remove(key) {
+    this.storage.removeItem(key);
+    return Promise.resolve();
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+function _iframeCannotSyncWebStorage() {
+  const ua = (0, _util.getUA)();
+  return _isSafari(ua) || _isIOS(ua);
+} // The polling period in case events are not supported
+
+
+const _POLLING_INTERVAL_MS$1 = 1000; // The IE 10 localStorage cross tab synchronization delay in milliseconds
+
+const IE10_LOCAL_STORAGE_SYNC_DELAY = 10;
+
+class BrowserLocalPersistence extends BrowserPersistenceClass {
+  constructor() {
+    super(window.localStorage, "LOCAL"
+    /* LOCAL */
+    );
+    this.listeners = {};
+    this.localCache = {}; // setTimeout return value is platform specific
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+    this.pollTimer = null; // Safari or iOS browser and embedded in an iframe.
+
+    this.safariLocalStorageNotSynced = _iframeCannotSyncWebStorage() && _isIframe(); // Whether to use polling instead of depending on window events
+
+    this.fallbackToPolling = _isMobileBrowser();
+    this._shouldAllowMigration = true;
+    this.boundEventHandler = this.onStorageEvent.bind(this);
+  }
+
+  forAllChangedKeys(cb) {
+    // Check all keys with listeners on them.
+    for (const key of Object.keys(this.listeners)) {
+      // Get value from localStorage.
+      const newValue = this.storage.getItem(key);
+      const oldValue = this.localCache[key]; // If local map value does not match, trigger listener with storage event.
+      // Differentiate this simulated event from the real storage event.
+
+      if (newValue !== oldValue) {
+        cb(key, oldValue, newValue);
+      }
+    }
+  }
+
+  onStorageEvent(event, poll = false) {
+    // Key would be null in some situations, like when localStorage is cleared
+    if (!event.key) {
+      this.forAllChangedKeys((key, _oldValue, newValue) => {
+        this.notifyListeners(key, newValue);
+      });
+      return;
+    }
+
+    const key = event.key; // Check the mechanism how this event was detected.
+    // The first event will dictate the mechanism to be used.
+
+    if (poll) {
+      // Environment detects storage changes via polling.
+      // Remove storage event listener to prevent possible event duplication.
+      this.detachListener();
+    } else {
+      // Environment detects storage changes via storage event listener.
+      // Remove polling listener to prevent possible event duplication.
+      this.stopPolling();
+    } // Safari embedded iframe. Storage event will trigger with the delta
+    // changes but no changes will be applied to the iframe localStorage.
+
+
+    if (this.safariLocalStorageNotSynced) {
+      // Get current iframe page value.
+      const storedValue = this.storage.getItem(key); // Value not synchronized, synchronize manually.
+
+      if (event.newValue !== storedValue) {
+        if (event.newValue !== null) {
+          // Value changed from current value.
+          this.storage.setItem(key, event.newValue);
+        } else {
+          // Current value deleted.
+          this.storage.removeItem(key);
+        }
+      } else if (this.localCache[key] === event.newValue && !poll) {
+        // Already detected and processed, do not trigger listeners again.
+        return;
+      }
+    }
+
+    const triggerListeners = () => {
+      // Keep local map up to date in case storage event is triggered before
+      // poll.
+      const storedValue = this.storage.getItem(key);
+
+      if (!poll && this.localCache[key] === storedValue) {
+        // Real storage event which has already been detected, do nothing.
+        // This seems to trigger in some IE browsers for some reason.
+        return;
+      }
+
+      this.notifyListeners(key, storedValue);
+    };
+
+    const storedValue = this.storage.getItem(key);
+
+    if (_isIE10() && storedValue !== event.newValue && event.newValue !== event.oldValue) {
+      // IE 10 has this weird bug where a storage event would trigger with the
+      // correct key, oldValue and newValue but localStorage.getItem(key) does
+      // not yield the updated value until a few milliseconds. This ensures
+      // this recovers from that situation.
+      setTimeout(triggerListeners, IE10_LOCAL_STORAGE_SYNC_DELAY);
+    } else {
+      triggerListeners();
+    }
+  }
+
+  notifyListeners(key, value) {
+    this.localCache[key] = value;
+    const listeners = this.listeners[key];
+
+    if (listeners) {
+      for (const listener of Array.from(listeners)) {
+        listener(value ? JSON.parse(value) : value);
+      }
+    }
+  }
+
+  startPolling() {
+    this.stopPolling();
+    this.pollTimer = setInterval(() => {
+      this.forAllChangedKeys((key, oldValue, newValue) => {
+        this.onStorageEvent(new StorageEvent('storage', {
+          key,
+          oldValue,
+          newValue
+        }),
+        /* poll */
+        true);
+      });
+    }, _POLLING_INTERVAL_MS$1);
+  }
+
+  stopPolling() {
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+  }
+
+  attachListener() {
+    window.addEventListener('storage', this.boundEventHandler);
+  }
+
+  detachListener() {
+    window.removeEventListener('storage', this.boundEventHandler);
+  }
+
+  _addListener(key, listener) {
+    if (Object.keys(this.listeners).length === 0) {
+      // Whether browser can detect storage event when it had already been pushed to the background.
+      // This may happen in some mobile browsers. A localStorage change in the foreground window
+      // will not be detected in the background window via the storage event.
+      // This was detected in iOS 7.x mobile browsers
+      if (this.fallbackToPolling) {
+        this.startPolling();
+      } else {
+        this.attachListener();
+      }
+    }
+
+    if (!this.listeners[key]) {
+      this.listeners[key] = new Set(); // Populate the cache to avoid spuriously triggering on first poll.
+
+      this.localCache[key] = this.storage.getItem(key);
+    }
+
+    this.listeners[key].add(listener);
+  }
+
+  _removeListener(key, listener) {
+    if (this.listeners[key]) {
+      this.listeners[key].delete(listener);
+
+      if (this.listeners[key].size === 0) {
+        delete this.listeners[key];
+      }
+    }
+
+    if (Object.keys(this.listeners).length === 0) {
+      this.detachListener();
+      this.stopPolling();
+    }
+  } // Update local cache on base operations:
+
+
+  async _set(key, value) {
+    await super._set(key, value);
+    this.localCache[key] = JSON.stringify(value);
+  }
+
+  async _get(key) {
+    const value = await super._get(key);
+    this.localCache[key] = JSON.stringify(value);
+    return value;
+  }
+
+  async _remove(key) {
+    await super._remove(key);
+    delete this.localCache[key];
+  }
+
+}
+
+BrowserLocalPersistence.type = 'LOCAL';
+/**
+ * An implementation of {@link Persistence} of type `LOCAL` using `localStorage`
+ * for the underlying storage.
+ *
+ * @public
+ */
+
+const browserLocalPersistence = BrowserLocalPersistence;
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+exports.b = browserLocalPersistence;
+
+class BrowserSessionPersistence extends BrowserPersistenceClass {
+  constructor() {
+    super(window.sessionStorage, "SESSION"
+    /* SESSION */
+    );
+  }
+
+  _addListener(_key, _listener) {
+    // Listeners are not supported for session storage since it cannot be shared across windows
+    return;
+  }
+
+  _removeListener(_key, _listener) {
+    // Listeners are not supported for session storage since it cannot be shared across windows
+    return;
+  }
+
+}
+
+BrowserSessionPersistence.type = 'SESSION';
+/**
+ * An implementation of {@link Persistence} of `SESSION` using `sessionStorage`
+ * for the underlying storage.
+ *
+ * @public
+ */
+
+const browserSessionPersistence = BrowserSessionPersistence;
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Shim for Promise.allSettled, note the slightly different format of `fulfilled` vs `status`.
+ *
+ * @param promises - Array of promises to wait on.
+ */
+
+exports.a = browserSessionPersistence;
+
+function _allSettled(promises) {
+  return Promise.all(promises.map(async promise => {
+    try {
+      const value = await promise;
+      return {
+        fulfilled: true,
+        value
+      };
+    } catch (reason) {
+      return {
+        fulfilled: false,
+        reason
+      };
+    }
+  }));
+}
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Interface class for receiving messages.
+ *
+ */
+
+
+class Receiver {
+  constructor(eventTarget) {
+    this.eventTarget = eventTarget;
+    this.handlersMap = {};
+    this.boundEventHandler = this.handleEvent.bind(this);
+  }
+  /**
+   * Obtain an instance of a Receiver for a given event target, if none exists it will be created.
+   *
+   * @param eventTarget - An event target (such as window or self) through which the underlying
+   * messages will be received.
+   */
+
+
+  static _getInstance(eventTarget) {
+    // The results are stored in an array since objects can't be keys for other
+    // objects. In addition, setting a unique property on an event target as a
+    // hash map key may not be allowed due to CORS restrictions.
+    const existingInstance = this.receivers.find(receiver => receiver.isListeningto(eventTarget));
+
+    if (existingInstance) {
+      return existingInstance;
+    }
+
+    const newInstance = new Receiver(eventTarget);
+    this.receivers.push(newInstance);
+    return newInstance;
+  }
+
+  isListeningto(eventTarget) {
+    return this.eventTarget === eventTarget;
+  }
+  /**
+   * Fans out a MessageEvent to the appropriate listeners.
+   *
+   * @remarks
+   * Sends an {@link Status.ACK} upon receipt and a {@link Status.DONE} once all handlers have
+   * finished processing.
+   *
+   * @param event - The MessageEvent.
+   *
+   */
+
+
+  async handleEvent(event) {
+    const messageEvent = event;
+    const {
+      eventId,
+      eventType,
+      data
+    } = messageEvent.data;
+    const handlers = this.handlersMap[eventType];
+
+    if (!(handlers === null || handlers === void 0 ? void 0 : handlers.size)) {
+      return;
+    }
+
+    messageEvent.ports[0].postMessage({
+      status: "ack"
+      /* ACK */
+      ,
+      eventId,
+      eventType
+    });
+    const promises = Array.from(handlers).map(async handler => handler(messageEvent.origin, data));
+    const response = await _allSettled(promises);
+    messageEvent.ports[0].postMessage({
+      status: "done"
+      /* DONE */
+      ,
+      eventId,
+      eventType,
+      response
+    });
+  }
+  /**
+   * Subscribe an event handler for a particular event.
+   *
+   * @param eventType - Event name to subscribe to.
+   * @param eventHandler - The event handler which should receive the events.
+   *
+   */
+
+
+  _subscribe(eventType, eventHandler) {
+    if (Object.keys(this.handlersMap).length === 0) {
+      this.eventTarget.addEventListener('message', this.boundEventHandler);
+    }
+
+    if (!this.handlersMap[eventType]) {
+      this.handlersMap[eventType] = new Set();
+    }
+
+    this.handlersMap[eventType].add(eventHandler);
+  }
+  /**
+   * Unsubscribe an event handler from a particular event.
+   *
+   * @param eventType - Event name to unsubscribe from.
+   * @param eventHandler - Optinoal event handler, if none provided, unsubscribe all handlers on this event.
+   *
+   */
+
+
+  _unsubscribe(eventType, eventHandler) {
+    if (this.handlersMap[eventType] && eventHandler) {
+      this.handlersMap[eventType].delete(eventHandler);
+    }
+
+    if (!eventHandler || this.handlersMap[eventType].size === 0) {
+      delete this.handlersMap[eventType];
+    }
+
+    if (Object.keys(this.handlersMap).length === 0) {
+      this.eventTarget.removeEventListener('message', this.boundEventHandler);
+    }
+  }
+
+}
+
+Receiver.receivers = [];
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+function _generateEventId(prefix = '', digits = 10) {
+  let random = '';
+
+  for (let i = 0; i < digits; i++) {
+    random += Math.floor(Math.random() * 10);
+  }
+
+  return prefix + random;
+}
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Interface for sending messages and waiting for a completion response.
+ *
+ */
+
+
+class Sender {
+  constructor(target) {
+    this.target = target;
+    this.handlers = new Set();
+  }
+  /**
+   * Unsubscribe the handler and remove it from our tracking Set.
+   *
+   * @param handler - The handler to unsubscribe.
+   */
+
+
+  removeMessageHandler(handler) {
+    if (handler.messageChannel) {
+      handler.messageChannel.port1.removeEventListener('message', handler.onMessage);
+      handler.messageChannel.port1.close();
+    }
+
+    this.handlers.delete(handler);
+  }
+  /**
+   * Send a message to the Receiver located at {@link target}.
+   *
+   * @remarks
+   * We'll first wait a bit for an ACK , if we get one we will wait significantly longer until the
+   * receiver has had a chance to fully process the event.
+   *
+   * @param eventType - Type of event to send.
+   * @param data - The payload of the event.
+   * @param timeout - Timeout for waiting on an ACK from the receiver.
+   *
+   * @returns An array of settled promises from all the handlers that were listening on the receiver.
+   */
+
+
+  async _send(eventType, data, timeout = 50
+  /* ACK */
+  ) {
+    const messageChannel = typeof MessageChannel !== 'undefined' ? new MessageChannel() : null;
+
+    if (!messageChannel) {
+      throw new Error("connection_unavailable"
+      /* CONNECTION_UNAVAILABLE */
+      );
+    } // Node timers and browser timers return fundamentally different types.
+    // We don't actually care what the value is but TS won't accept unknown and
+    // we can't cast properly in both environments.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+
+    let completionTimer;
+    let handler;
+    return new Promise((resolve, reject) => {
+      const eventId = _generateEventId('', 20);
+
+      messageChannel.port1.start();
+      const ackTimer = setTimeout(() => {
+        reject(new Error("unsupported_event"
+        /* UNSUPPORTED_EVENT */
+        ));
+      }, timeout);
+      handler = {
+        messageChannel,
+
+        onMessage(event) {
+          const messageEvent = event;
+
+          if (messageEvent.data.eventId !== eventId) {
+            return;
+          }
+
+          switch (messageEvent.data.status) {
+            case "ack"
+            /* ACK */
+            :
+              // The receiver should ACK first.
+              clearTimeout(ackTimer);
+              completionTimer = setTimeout(() => {
+                reject(new Error("timeout"
+                /* TIMEOUT */
+                ));
+              }, 3000
+              /* COMPLETION */
+              );
+              break;
+
+            case "done"
+            /* DONE */
+            :
+              // Once the receiver's handlers are finished we will get the results.
+              clearTimeout(completionTimer);
+              resolve(messageEvent.data.response);
+              break;
+
+            default:
+              clearTimeout(ackTimer);
+              clearTimeout(completionTimer);
+              reject(new Error("invalid_response"
+              /* INVALID_RESPONSE */
+              ));
+              break;
+          }
+        }
+
+      };
+      this.handlers.add(handler);
+      messageChannel.port1.addEventListener('message', handler.onMessage);
+      this.target.postMessage({
+        eventType,
+        eventId,
+        data
+      }, [messageChannel.port2]);
+    }).finally(() => {
+      if (handler) {
+        this.removeMessageHandler(handler);
+      }
+    });
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Lazy accessor for window, since the compat layer won't tree shake this out,
+ * we need to make sure not to mess with window unless we have to
+ */
+
+
+function _window() {
+  return window;
+}
+
+function _setWindowLocation(url) {
+  _window().location.href = url;
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+function _isWorker() {
+  return typeof _window()['WorkerGlobalScope'] !== 'undefined' && typeof _window()['importScripts'] === 'function';
+}
+
+async function _getActiveServiceWorker() {
+  if (!(navigator === null || navigator === void 0 ? void 0 : navigator.serviceWorker)) {
+    return null;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    return registration.active;
+  } catch (_a) {
+    return null;
+  }
+}
+
+function _getServiceWorkerController() {
+  var _a;
+
+  return ((_a = navigator === null || navigator === void 0 ? void 0 : navigator.serviceWorker) === null || _a === void 0 ? void 0 : _a.controller) || null;
+}
+
+function _getWorkerGlobalScope() {
+  return _isWorker() ? self : null;
+}
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+const DB_NAME = 'firebaseLocalStorageDb';
+const DB_VERSION = 1;
+const DB_OBJECTSTORE_NAME = 'firebaseLocalStorage';
+const DB_DATA_KEYPATH = 'fbase_key';
+/**
+ * Promise wrapper for IDBRequest
+ *
+ * Unfortunately we can't cleanly extend Promise<T> since promises are not callable in ES6
+ *
+ */
+
+class DBPromise {
+  constructor(request) {
+    this.request = request;
+  }
+
+  toPromise() {
+    return new Promise((resolve, reject) => {
+      this.request.addEventListener('success', () => {
+        resolve(this.request.result);
+      });
+      this.request.addEventListener('error', () => {
+        reject(this.request.error);
+      });
+    });
+  }
+
+}
+
+function getObjectStore(db, isReadWrite) {
+  return db.transaction([DB_OBJECTSTORE_NAME], isReadWrite ? 'readwrite' : 'readonly').objectStore(DB_OBJECTSTORE_NAME);
+}
+
+function _deleteDatabase() {
+  const request = indexedDB.deleteDatabase(DB_NAME);
+  return new DBPromise(request).toPromise();
+}
+
+function _openDatabase() {
+  const request = indexedDB.open(DB_NAME, DB_VERSION);
+  return new Promise((resolve, reject) => {
+    request.addEventListener('error', () => {
+      reject(request.error);
+    });
+    request.addEventListener('upgradeneeded', () => {
+      const db = request.result;
+
+      try {
+        db.createObjectStore(DB_OBJECTSTORE_NAME, {
+          keyPath: DB_DATA_KEYPATH
+        });
+      } catch (e) {
+        reject(e);
+      }
+    });
+    request.addEventListener('success', async () => {
+      const db = request.result; // Strange bug that occurs in Firefox when multiple tabs are opened at the
+      // same time. The only way to recover seems to be deleting the database
+      // and re-initializing it.
+      // https://github.com/firebase/firebase-js-sdk/issues/634
+
+      if (!db.objectStoreNames.contains(DB_OBJECTSTORE_NAME)) {
+        // Need to close the database or else you get a `blocked` event
+        db.close();
+        await _deleteDatabase();
+        resolve(await _openDatabase());
+      } else {
+        resolve(db);
+      }
+    });
+  });
+}
+
+async function _putObject(db, key, value) {
+  const request = getObjectStore(db, true).put({
+    [DB_DATA_KEYPATH]: key,
+    value
+  });
+  return new DBPromise(request).toPromise();
+}
+
+async function getObject(db, key) {
+  const request = getObjectStore(db, false).get(key);
+  const data = await new DBPromise(request).toPromise();
+  return data === undefined ? null : data.value;
+}
+
+function _deleteObject(db, key) {
+  const request = getObjectStore(db, true).delete(key);
+  return new DBPromise(request).toPromise();
+}
+
+const _POLLING_INTERVAL_MS = 800;
+const _TRANSACTION_RETRY_COUNT = 3;
+
+class IndexedDBLocalPersistence {
+  constructor() {
+    this.type = "LOCAL"
+    /* LOCAL */
+    ;
+    this._shouldAllowMigration = true;
+    this.listeners = {};
+    this.localCache = {}; // setTimeout return value is platform specific
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+    this.pollTimer = null;
+    this.pendingWrites = 0;
+    this.receiver = null;
+    this.sender = null;
+    this.serviceWorkerReceiverAvailable = false;
+    this.activeServiceWorker = null; // Fire & forget the service worker registration as it may never resolve
+
+    this._workerInitializationPromise = this.initializeServiceWorkerMessaging().then(() => {}, () => {});
+  }
+
+  async _openDb() {
+    if (this.db) {
+      return this.db;
+    }
+
+    this.db = await _openDatabase();
+    return this.db;
+  }
+
+  async _withRetries(op) {
+    let numAttempts = 0;
+
+    while (true) {
+      try {
+        const db = await this._openDb();
+        return await op(db);
+      } catch (e) {
+        if (numAttempts++ > _TRANSACTION_RETRY_COUNT) {
+          throw e;
+        }
+
+        if (this.db) {
+          this.db.close();
+          this.db = undefined;
+        } // TODO: consider adding exponential backoff
+
+      }
+    }
+  }
+  /**
+   * IndexedDB events do not propagate from the main window to the worker context.  We rely on a
+   * postMessage interface to send these events to the worker ourselves.
+   */
+
+
+  async initializeServiceWorkerMessaging() {
+    return _isWorker() ? this.initializeReceiver() : this.initializeSender();
+  }
+  /**
+   * As the worker we should listen to events from the main window.
+   */
+
+
+  async initializeReceiver() {
+    this.receiver = Receiver._getInstance(_getWorkerGlobalScope()); // Refresh from persistence if we receive a KeyChanged message.
+
+    this.receiver._subscribe("keyChanged"
+    /* KEY_CHANGED */
+    , async (_origin, data) => {
+      const keys = await this._poll();
+      return {
+        keyProcessed: keys.includes(data.key)
+      };
+    }); // Let the sender know that we are listening so they give us more timeout.
+
+
+    this.receiver._subscribe("ping"
+    /* PING */
+    , async (_origin, _data) => {
+      return ["keyChanged"
+      /* KEY_CHANGED */
+      ];
+    });
+  }
+  /**
+   * As the main window, we should let the worker know when keys change (set and remove).
+   *
+   * @remarks
+   * {@link https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerContainer/ready | ServiceWorkerContainer.ready}
+   * may not resolve.
+   */
+
+
+  async initializeSender() {
+    var _a, _b; // Check to see if there's an active service worker.
+
+
+    this.activeServiceWorker = await _getActiveServiceWorker();
+
+    if (!this.activeServiceWorker) {
+      return;
+    }
+
+    this.sender = new Sender(this.activeServiceWorker); // Ping the service worker to check what events they can handle.
+
+    const results = await this.sender._send("ping"
+    /* PING */
+    , {}, 800
+    /* LONG_ACK */
+    );
+
+    if (!results) {
+      return;
+    }
+
+    if (((_a = results[0]) === null || _a === void 0 ? void 0 : _a.fulfilled) && ((_b = results[0]) === null || _b === void 0 ? void 0 : _b.value.includes("keyChanged"
+    /* KEY_CHANGED */
+    ))) {
+      this.serviceWorkerReceiverAvailable = true;
+    }
+  }
+  /**
+   * Let the worker know about a changed key, the exact key doesn't technically matter since the
+   * worker will just trigger a full sync anyway.
+   *
+   * @remarks
+   * For now, we only support one service worker per page.
+   *
+   * @param key - Storage key which changed.
+   */
+
+
+  async notifyServiceWorker(key) {
+    if (!this.sender || !this.activeServiceWorker || _getServiceWorkerController() !== this.activeServiceWorker) {
+      return;
+    }
+
+    try {
+      await this.sender._send("keyChanged"
+      /* KEY_CHANGED */
+      , {
+        key
+      }, // Use long timeout if receiver has previously responded to a ping from us.
+      this.serviceWorkerReceiverAvailable ? 800
+      /* LONG_ACK */
+      : 50
+      /* ACK */
+      );
+    } catch (_a) {// This is a best effort approach. Ignore errors.
+    }
+  }
+
+  async _isAvailable() {
+    try {
+      if (!indexedDB) {
+        return false;
+      }
+
+      const db = await _openDatabase();
+      await _putObject(db, STORAGE_AVAILABLE_KEY, '1');
+      await _deleteObject(db, STORAGE_AVAILABLE_KEY);
+      return true;
+    } catch (_a) {}
+
+    return false;
+  }
+
+  async _withPendingWrite(write) {
+    this.pendingWrites++;
+
+    try {
+      await write();
+    } finally {
+      this.pendingWrites--;
+    }
+  }
+
+  async _set(key, value) {
+    return this._withPendingWrite(async () => {
+      await this._withRetries(db => _putObject(db, key, value));
+      this.localCache[key] = value;
+      return this.notifyServiceWorker(key);
+    });
+  }
+
+  async _get(key) {
+    const obj = await this._withRetries(db => getObject(db, key));
+    this.localCache[key] = obj;
+    return obj;
+  }
+
+  async _remove(key) {
+    return this._withPendingWrite(async () => {
+      await this._withRetries(db => _deleteObject(db, key));
+      delete this.localCache[key];
+      return this.notifyServiceWorker(key);
+    });
+  }
+
+  async _poll() {
+    // TODO: check if we need to fallback if getAll is not supported
+    const result = await this._withRetries(db => {
+      const getAllRequest = getObjectStore(db, false).getAll();
+      return new DBPromise(getAllRequest).toPromise();
+    });
+
+    if (!result) {
+      return [];
+    } // If we have pending writes in progress abort, we'll get picked up on the next poll
+
+
+    if (this.pendingWrites !== 0) {
+      return [];
+    }
+
+    const keys = [];
+    const keysInResult = new Set();
+
+    for (const {
+      fbase_key: key,
+      value
+    } of result) {
+      keysInResult.add(key);
+
+      if (JSON.stringify(this.localCache[key]) !== JSON.stringify(value)) {
+        this.notifyListeners(key, value);
+        keys.push(key);
+      }
+    }
+
+    for (const localKey of Object.keys(this.localCache)) {
+      if (this.localCache[localKey] && !keysInResult.has(localKey)) {
+        // Deleted
+        this.notifyListeners(localKey, null);
+        keys.push(localKey);
+      }
+    }
+
+    return keys;
+  }
+
+  notifyListeners(key, newValue) {
+    this.localCache[key] = newValue;
+    const listeners = this.listeners[key];
+
+    if (listeners) {
+      for (const listener of Array.from(listeners)) {
+        listener(newValue);
+      }
+    }
+  }
+
+  startPolling() {
+    this.stopPolling();
+    this.pollTimer = setInterval(async () => this._poll(), _POLLING_INTERVAL_MS);
+  }
+
+  stopPolling() {
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+  }
+
+  _addListener(key, listener) {
+    if (Object.keys(this.listeners).length === 0) {
+      this.startPolling();
+    }
+
+    if (!this.listeners[key]) {
+      this.listeners[key] = new Set(); // Populate the cache to avoid spuriously triggering on first poll.
+
+      void this._get(key); // This can happen in the background async and we can return immediately.
+    }
+
+    this.listeners[key].add(listener);
+  }
+
+  _removeListener(key, listener) {
+    if (this.listeners[key]) {
+      this.listeners[key].delete(listener);
+
+      if (this.listeners[key].size === 0) {
+        delete this.listeners[key];
+      }
+    }
+
+    if (Object.keys(this.listeners).length === 0) {
+      this.stopPolling();
+    }
+  }
+
+}
+
+IndexedDBLocalPersistence.type = 'LOCAL';
+/**
+ * An implementation of {@link Persistence} of type `LOCAL` using `indexedDB`
+ * for the underlying storage.
+ *
+ * @public
+ */
+
+const indexedDBLocalPersistence = IndexedDBLocalPersistence;
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+exports.i = indexedDBLocalPersistence;
+
+function startSignInPhoneMfa(auth, request) {
+  return _performApiRequest(auth, "POST"
+  /* POST */
+  , "/v2/accounts/mfaSignIn:start"
+  /* START_PHONE_MFA_SIGN_IN */
+  , Object.assign({
+    tenantId: auth.tenantId
+  }, request));
+}
+
+function finalizeSignInPhoneMfa(auth, request) {
+  return _performApiRequest(auth, "POST"
+  /* POST */
+  , "/v2/accounts/mfaSignIn:finalize"
+  /* FINALIZE_PHONE_MFA_SIGN_IN */
+  , Object.assign({
+    tenantId: auth.tenantId
+  }, request));
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+async function getRecaptchaParams(auth) {
+  return (await _performApiRequest(auth, "GET"
+  /* GET */
+  , "/v1/recaptchaParams"
+  /* GET_RECAPTCHA_PARAM */
+  )).recaptchaSiteKey || '';
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+function getScriptParentElement() {
+  var _a, _b;
+
+  return (_b = (_a = document.getElementsByTagName('head')) === null || _a === void 0 ? void 0 : _a[0]) !== null && _b !== void 0 ? _b : document;
+}
+
+function _loadJS(url) {
+  // TODO: consider adding timeout support & cancellation
+  return new Promise((resolve, reject) => {
+    const el = document.createElement('script');
+    el.setAttribute('src', url);
+    el.onload = resolve;
+
+    el.onerror = e => {
+      const error = _createError("internal-error"
+      /* INTERNAL_ERROR */
+      );
+
+      error.customData = e;
+      reject(error);
+    };
+
+    el.type = 'text/javascript';
+    el.charset = 'UTF-8';
+    getScriptParentElement().appendChild(el);
+  });
+}
+
+function _generateCallbackName(prefix) {
+  return `__${prefix}${Math.floor(Math.random() * 1000000)}`;
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+const _SOLVE_TIME_MS = 500;
+const _EXPIRATION_TIME_MS = 60000;
+const _WIDGET_ID_START = 1000000000000;
+
+class MockReCaptcha {
+  constructor(auth) {
+    this.auth = auth;
+    this.counter = _WIDGET_ID_START;
+    this._widgets = new Map();
+  }
+
+  render(container, parameters) {
+    const id = this.counter;
+
+    this._widgets.set(id, new MockWidget(container, this.auth.name, parameters || {}));
+
+    this.counter++;
+    return id;
+  }
+
+  reset(optWidgetId) {
+    var _a;
+
+    const id = optWidgetId || _WIDGET_ID_START;
+    void ((_a = this._widgets.get(id)) === null || _a === void 0 ? void 0 : _a.delete());
+
+    this._widgets.delete(id);
+  }
+
+  getResponse(optWidgetId) {
+    var _a;
+
+    const id = optWidgetId || _WIDGET_ID_START;
+    return ((_a = this._widgets.get(id)) === null || _a === void 0 ? void 0 : _a.getResponse()) || '';
+  }
+
+  async execute(optWidgetId) {
+    var _a;
+
+    const id = optWidgetId || _WIDGET_ID_START;
+    void ((_a = this._widgets.get(id)) === null || _a === void 0 ? void 0 : _a.execute());
+    return '';
+  }
+
+}
+
+class MockWidget {
+  constructor(containerOrId, appName, params) {
+    this.params = params;
+    this.timerId = null;
+    this.deleted = false;
+    this.responseToken = null;
+
+    this.clickHandler = () => {
+      this.execute();
+    };
+
+    const container = typeof containerOrId === 'string' ? document.getElementById(containerOrId) : containerOrId;
+
+    _assert(container, "argument-error"
+    /* ARGUMENT_ERROR */
+    , {
+      appName
+    });
+
+    this.container = container;
+    this.isVisible = this.params.size !== 'invisible';
+
+    if (this.isVisible) {
+      this.execute();
+    } else {
+      this.container.addEventListener('click', this.clickHandler);
+    }
+  }
+
+  getResponse() {
+    this.checkIfDeleted();
+    return this.responseToken;
+  }
+
+  delete() {
+    this.checkIfDeleted();
+    this.deleted = true;
+
+    if (this.timerId) {
+      clearTimeout(this.timerId);
+      this.timerId = null;
+    }
+
+    this.container.removeEventListener('click', this.clickHandler);
+  }
+
+  execute() {
+    this.checkIfDeleted();
+
+    if (this.timerId) {
+      return;
+    }
+
+    this.timerId = window.setTimeout(() => {
+      this.responseToken = generateRandomAlphaNumericString(50);
+      const {
+        callback,
+        'expired-callback': expiredCallback
+      } = this.params;
+
+      if (callback) {
+        try {
+          callback(this.responseToken);
+        } catch (e) {}
+      }
+
+      this.timerId = window.setTimeout(() => {
+        this.timerId = null;
+        this.responseToken = null;
+
+        if (expiredCallback) {
+          try {
+            expiredCallback();
+          } catch (e) {}
+        }
+
+        if (this.isVisible) {
+          this.execute();
+        }
+      }, _EXPIRATION_TIME_MS);
+    }, _SOLVE_TIME_MS);
+  }
+
+  checkIfDeleted() {
+    if (this.deleted) {
+      throw new Error('reCAPTCHA mock was already deleted!');
+    }
+  }
+
+}
+
+function generateRandomAlphaNumericString(len) {
+  const chars = [];
+  const allowedChars = '1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+  for (let i = 0; i < len; i++) {
+    chars.push(allowedChars.charAt(Math.floor(Math.random() * allowedChars.length)));
+  }
+
+  return chars.join('');
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+// ReCaptcha will load using the same callback, so the callback function needs
+// to be kept around
+
+
+const _JSLOAD_CALLBACK = _generateCallbackName('rcb');
+
+const NETWORK_TIMEOUT_DELAY = new Delay(30000, 60000);
+const RECAPTCHA_BASE = 'https://www.google.com/recaptcha/api.js?';
+/**
+ * Loader for the GReCaptcha library. There should only ever be one of this.
+ */
+
+class ReCaptchaLoaderImpl {
+  constructor() {
+    this.hostLanguage = '';
+    this.counter = 0;
+    this.librarySeparatelyLoaded = !!_window().grecaptcha;
+  }
+
+  load(auth, hl = '') {
+    _assert(isHostLanguageValid(hl), auth, "argument-error"
+    /* ARGUMENT_ERROR */
+    );
+
+    if (this.shouldResolveImmediately(hl)) {
+      return Promise.resolve(_window().grecaptcha);
+    }
+
+    return new Promise((resolve, reject) => {
+      const networkTimeout = _window().setTimeout(() => {
+        reject(_createError(auth, "network-request-failed"
+        /* NETWORK_REQUEST_FAILED */
+        ));
+      }, NETWORK_TIMEOUT_DELAY.get());
+
+      _window()[_JSLOAD_CALLBACK] = () => {
+        _window().clearTimeout(networkTimeout);
+
+        delete _window()[_JSLOAD_CALLBACK];
+
+        const recaptcha = _window().grecaptcha;
+
+        if (!recaptcha) {
+          reject(_createError(auth, "internal-error"
+          /* INTERNAL_ERROR */
+          ));
+          return;
+        } // Wrap the greptcha render function so that we know if the developer has
+        // called it separately
+
+
+        const render = recaptcha.render;
+
+        recaptcha.render = (container, params) => {
+          const widgetId = render(container, params);
+          this.counter++;
+          return widgetId;
+        };
+
+        this.hostLanguage = hl;
+        resolve(recaptcha);
+      };
+
+      const url = `${RECAPTCHA_BASE}?${(0, _util.querystring)({
+        onload: _JSLOAD_CALLBACK,
+        render: 'explicit',
+        hl
+      })}`;
+
+      _loadJS(url).catch(() => {
+        clearTimeout(networkTimeout);
+        reject(_createError(auth, "internal-error"
+        /* INTERNAL_ERROR */
+        ));
+      });
+    });
+  }
+
+  clearedOneInstance() {
+    this.counter--;
+  }
+
+  shouldResolveImmediately(hl) {
+    // We can resolve immediately if:
+    //   • grecaptcha is already defined AND (
+    //     1. the requested language codes are the same OR
+    //     2. there exists already a ReCaptcha on the page
+    //     3. the library was already loaded by the app
+    // In cases (2) and (3), we _can't_ reload as it would break the recaptchas
+    // that are already in the page
+    return !!_window().grecaptcha && (hl === this.hostLanguage || this.counter > 0 || this.librarySeparatelyLoaded);
+  }
+
+}
+
+function isHostLanguageValid(hl) {
+  return hl.length <= 6 && /^\s*[a-zA-Z0-9\-]*\s*$/.test(hl);
+}
+
+class MockReCaptchaLoaderImpl {
+  async load(auth) {
+    return new MockReCaptcha(auth);
+  }
+
+  clearedOneInstance() {}
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+const RECAPTCHA_VERIFIER_TYPE = 'recaptcha';
+const DEFAULT_PARAMS = {
+  theme: 'light',
+  type: 'image'
+};
+/**
+ * An {@link https://www.google.com/recaptcha/ | reCAPTCHA}-based application verifier.
+ *
+ * @public
+ */
+
+class RecaptchaVerifier {
+  /**
+   *
+   * @param containerOrId - The reCAPTCHA container parameter.
+   *
+   * @remarks
+   * This has different meaning depending on whether the reCAPTCHA is hidden or visible. For a
+   * visible reCAPTCHA the container must be empty. If a string is used, it has to correspond to
+   * an element ID. The corresponding element must also must be in the DOM at the time of
+   * initialization.
+   *
+   * @param parameters - The optional reCAPTCHA parameters.
+   *
+   * @remarks
+   * Check the reCAPTCHA docs for a comprehensive list. All parameters are accepted except for
+   * the sitekey. Firebase Auth backend provisions a reCAPTCHA for each project and will
+   * configure this upon rendering. For an invisible reCAPTCHA, a size key must have the value
+   * 'invisible'.
+   *
+   * @param authExtern - The corresponding Firebase {@link Auth} instance.
+   *
+   * @remarks
+   * If none is provided, the default Firebase {@link Auth} instance is used. A Firebase {@link Auth} instance
+   * must be initialized with an API key, otherwise an error will be thrown.
+   */
+  constructor(containerOrId, parameters = Object.assign({}, DEFAULT_PARAMS), authExtern) {
+    this.parameters = parameters;
+    /**
+     * The application verifier type.
+     *
+     * @remarks
+     * For a reCAPTCHA verifier, this is 'recaptcha'.
+     */
+
+    this.type = RECAPTCHA_VERIFIER_TYPE;
+    this.destroyed = false;
+    this.widgetId = null;
+    this.tokenChangeListeners = new Set();
+    this.renderPromise = null;
+    this.recaptcha = null;
+    this.auth = _castAuth(authExtern);
+    this.isInvisible = this.parameters.size === 'invisible';
+
+    _assert(typeof document !== 'undefined', this.auth, "operation-not-supported-in-this-environment"
+    /* OPERATION_NOT_SUPPORTED */
+    );
+
+    const container = typeof containerOrId === 'string' ? document.getElementById(containerOrId) : containerOrId;
+
+    _assert(container, this.auth, "argument-error"
+    /* ARGUMENT_ERROR */
+    );
+
+    this.container = container;
+    this.parameters.callback = this.makeTokenCallback(this.parameters.callback);
+    this._recaptchaLoader = this.auth.settings.appVerificationDisabledForTesting ? new MockReCaptchaLoaderImpl() : new ReCaptchaLoaderImpl();
+    this.validateStartingState(); // TODO: Figure out if sdk version is needed
+  }
+  /**
+   * Waits for the user to solve the reCAPTCHA and resolves with the reCAPTCHA token.
+   *
+   * @returns A Promise for the reCAPTCHA token.
+   */
+
+
+  async verify() {
+    this.assertNotDestroyed();
+    const id = await this.render();
+    const recaptcha = this.getAssertedRecaptcha();
+    const response = recaptcha.getResponse(id);
+
+    if (response) {
+      return response;
+    }
+
+    return new Promise(resolve => {
+      const tokenChange = token => {
+        if (!token) {
+          return; // Ignore token expirations.
+        }
+
+        this.tokenChangeListeners.delete(tokenChange);
+        resolve(token);
+      };
+
+      this.tokenChangeListeners.add(tokenChange);
+
+      if (this.isInvisible) {
+        recaptcha.execute(id);
+      }
+    });
+  }
+  /**
+   * Renders the reCAPTCHA widget on the page.
+   *
+   * @returns A Promise that resolves with the reCAPTCHA widget ID.
+   */
+
+
+  render() {
+    try {
+      this.assertNotDestroyed();
+    } catch (e) {
+      // This method returns a promise. Since it's not async (we want to return the
+      // _same_ promise if rendering is still occurring), the API surface should
+      // reject with the error rather than just throw
+      return Promise.reject(e);
+    }
+
+    if (this.renderPromise) {
+      return this.renderPromise;
+    }
+
+    this.renderPromise = this.makeRenderPromise().catch(e => {
+      this.renderPromise = null;
+      throw e;
+    });
+    return this.renderPromise;
+  }
+  /** @internal */
+
+
+  _reset() {
+    this.assertNotDestroyed();
+
+    if (this.widgetId !== null) {
+      this.getAssertedRecaptcha().reset(this.widgetId);
+    }
+  }
+  /**
+   * Clears the reCAPTCHA widget from the page and destroys the instance.
+   */
+
+
+  clear() {
+    this.assertNotDestroyed();
+    this.destroyed = true;
+
+    this._recaptchaLoader.clearedOneInstance();
+
+    if (!this.isInvisible) {
+      this.container.childNodes.forEach(node => {
+        this.container.removeChild(node);
+      });
+    }
+  }
+
+  validateStartingState() {
+    _assert(!this.parameters.sitekey, this.auth, "argument-error"
+    /* ARGUMENT_ERROR */
+    );
+
+    _assert(this.isInvisible || !this.container.hasChildNodes(), this.auth, "argument-error"
+    /* ARGUMENT_ERROR */
+    );
+
+    _assert(typeof document !== 'undefined', this.auth, "operation-not-supported-in-this-environment"
+    /* OPERATION_NOT_SUPPORTED */
+    );
+  }
+
+  makeTokenCallback(existing) {
+    return token => {
+      this.tokenChangeListeners.forEach(listener => listener(token));
+
+      if (typeof existing === 'function') {
+        existing(token);
+      } else if (typeof existing === 'string') {
+        const globalFunc = _window()[existing];
+
+        if (typeof globalFunc === 'function') {
+          globalFunc(token);
+        }
+      }
+    };
+  }
+
+  assertNotDestroyed() {
+    _assert(!this.destroyed, this.auth, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+  }
+
+  async makeRenderPromise() {
+    await this.init();
+
+    if (!this.widgetId) {
+      let container = this.container;
+
+      if (!this.isInvisible) {
+        const guaranteedEmpty = document.createElement('div');
+        container.appendChild(guaranteedEmpty);
+        container = guaranteedEmpty;
+      }
+
+      this.widgetId = this.getAssertedRecaptcha().render(container, this.parameters);
+    }
+
+    return this.widgetId;
+  }
+
+  async init() {
+    _assert(_isHttpOrHttps() && !_isWorker(), this.auth, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    await domReady();
+    this.recaptcha = await this._recaptchaLoader.load(this.auth, this.auth.languageCode || undefined);
+    const siteKey = await getRecaptchaParams(this.auth);
+
+    _assert(siteKey, this.auth, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    this.parameters.sitekey = siteKey;
+  }
+
+  getAssertedRecaptcha() {
+    _assert(this.recaptcha, this.auth, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    return this.recaptcha;
+  }
+
+}
+
+exports.R = RecaptchaVerifier;
+
+function domReady() {
+  let resolver = null;
+  return new Promise(resolve => {
+    if (document.readyState === 'complete') {
+      resolve();
+      return;
+    } // Document not ready, wait for load before resolving.
+    // Save resolver, so we can remove listener in case it was externally
+    // cancelled.
+
+
+    resolver = () => resolve();
+
+    window.addEventListener('load', resolver);
+  }).catch(e => {
+    if (resolver) {
+      window.removeEventListener('load', resolver);
+    }
+
+    throw e;
+  });
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+class ConfirmationResultImpl {
+  constructor(verificationId, onConfirmation) {
+    this.verificationId = verificationId;
+    this.onConfirmation = onConfirmation;
+  }
+
+  confirm(verificationCode) {
+    const authCredential = PhoneAuthCredential._fromVerification(this.verificationId, verificationCode);
+
+    return this.onConfirmation(authCredential);
+  }
+
+}
+/**
+ * Asynchronously signs in using a phone number.
+ *
+ * @remarks
+ * This method sends a code via SMS to the given
+ * phone number, and returns a {@link ConfirmationResult}. After the user
+ * provides the code sent to their phone, call {@link ConfirmationResult.confirm}
+ * with the code to sign the user in.
+ *
+ * For abuse prevention, this method also requires a {@link ApplicationVerifier}.
+ * This SDK includes a reCAPTCHA-based implementation, {@link RecaptchaVerifier}.
+ *
+ * @example
+ * ```javascript
+ * // 'recaptcha-container' is the ID of an element in the DOM.
+ * const applicationVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container');
+ * const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, applicationVerifier);
+ * // Obtain a verificationCode from the user.
+ * const credential = await confirmationResult.confirm(verificationCode);
+ * ```
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param phoneNumber - The user's phone number in E.164 format (e.g. +16505550101).
+ * @param appVerifier - The {@link ApplicationVerifier}.
+ *
+ * @public
+ */
+
+
+async function signInWithPhoneNumber(auth, phoneNumber, appVerifier) {
+  const authInternal = _castAuth(auth);
+
+  const verificationId = await _verifyPhoneNumber(authInternal, phoneNumber, (0, _util.getModularInstance)(appVerifier));
+  return new ConfirmationResultImpl(verificationId, cred => signInWithCredential(authInternal, cred));
+}
+/**
+ * Links the user account with the given phone number.
+ *
+ * @param user - The user.
+ * @param phoneNumber - The user's phone number in E.164 format (e.g. +16505550101).
+ * @param appVerifier - The {@link ApplicationVerifier}.
+ *
+ * @public
+ */
+
+
+async function linkWithPhoneNumber(user, phoneNumber, appVerifier) {
+  const userInternal = (0, _util.getModularInstance)(user);
+  await _assertLinkedStatus(false, userInternal, "phone"
+  /* PHONE */
+  );
+  const verificationId = await _verifyPhoneNumber(userInternal.auth, phoneNumber, (0, _util.getModularInstance)(appVerifier));
+  return new ConfirmationResultImpl(verificationId, cred => linkWithCredential(userInternal, cred));
+}
+/**
+ * Re-authenticates a user using a fresh phone credential.
+ *
+ * @remarks Use before operations such as {@link updatePassword} that require tokens from recent sign-in attempts.
+ *
+ * @param user - The user.
+ * @param phoneNumber - The user's phone number in E.164 format (e.g. +16505550101).
+ * @param appVerifier - The {@link ApplicationVerifier}.
+ *
+ * @public
+ */
+
+
+async function reauthenticateWithPhoneNumber(user, phoneNumber, appVerifier) {
+  const userInternal = (0, _util.getModularInstance)(user);
+  const verificationId = await _verifyPhoneNumber(userInternal.auth, phoneNumber, (0, _util.getModularInstance)(appVerifier));
+  return new ConfirmationResultImpl(verificationId, cred => reauthenticateWithCredential(userInternal, cred));
+}
+/**
+ * Returns a verification ID to be used in conjunction with the SMS code that is sent.
+ *
+ */
+
+
+async function _verifyPhoneNumber(auth, options, verifier) {
+  var _a;
+
+  const recaptchaToken = await verifier.verify();
+
+  try {
+    _assert(typeof recaptchaToken === 'string', auth, "argument-error"
+    /* ARGUMENT_ERROR */
+    );
+
+    _assert(verifier.type === RECAPTCHA_VERIFIER_TYPE, auth, "argument-error"
+    /* ARGUMENT_ERROR */
+    );
+
+    let phoneInfoOptions;
+
+    if (typeof options === 'string') {
+      phoneInfoOptions = {
+        phoneNumber: options
+      };
+    } else {
+      phoneInfoOptions = options;
+    }
+
+    if ('session' in phoneInfoOptions) {
+      const session = phoneInfoOptions.session;
+
+      if ('phoneNumber' in phoneInfoOptions) {
+        _assert(session.type === "enroll"
+        /* ENROLL */
+        , auth, "internal-error"
+        /* INTERNAL_ERROR */
+        );
+
+        const response = await startEnrollPhoneMfa(auth, {
+          idToken: session.credential,
+          phoneEnrollmentInfo: {
+            phoneNumber: phoneInfoOptions.phoneNumber,
+            recaptchaToken
+          }
+        });
+        return response.phoneSessionInfo.sessionInfo;
+      } else {
+        _assert(session.type === "signin"
+        /* SIGN_IN */
+        , auth, "internal-error"
+        /* INTERNAL_ERROR */
+        );
+
+        const mfaEnrollmentId = ((_a = phoneInfoOptions.multiFactorHint) === null || _a === void 0 ? void 0 : _a.uid) || phoneInfoOptions.multiFactorUid;
+
+        _assert(mfaEnrollmentId, auth, "missing-multi-factor-info"
+        /* MISSING_MFA_INFO */
+        );
+
+        const response = await startSignInPhoneMfa(auth, {
+          mfaPendingCredential: session.credential,
+          mfaEnrollmentId,
+          phoneSignInInfo: {
+            recaptchaToken
+          }
+        });
+        return response.phoneResponseInfo.sessionInfo;
+      }
+    } else {
+      const {
+        sessionInfo
+      } = await sendPhoneVerificationCode(auth, {
+        phoneNumber: phoneInfoOptions.phoneNumber,
+        recaptchaToken
+      });
+      return sessionInfo;
+    }
+  } finally {
+    verifier._reset();
+  }
+}
+/**
+ * Updates the user's phone number.
+ *
+ * @example
+ * ```
+ * // 'recaptcha-container' is the ID of an element in the DOM.
+ * const applicationVerifier = new RecaptchaVerifier('recaptcha-container');
+ * const provider = new PhoneAuthProvider(auth);
+ * const verificationId = await provider.verifyPhoneNumber('+16505550101', applicationVerifier);
+ * // Obtain the verificationCode from the user.
+ * const phoneCredential = PhoneAuthProvider.credential(verificationId, verificationCode);
+ * await updatePhoneNumber(user, phoneCredential);
+ * ```
+ *
+ * @param user - The user.
+ * @param credential - A credential authenticating the new phone number.
+ *
+ * @public
+ */
+
+
+async function updatePhoneNumber(user, credential) {
+  await _link$1((0, _util.getModularInstance)(user), credential);
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Provider for generating an {@link PhoneAuthCredential}.
+ *
+ * @example
+ * ```javascript
+ * // 'recaptcha-container' is the ID of an element in the DOM.
+ * const applicationVerifier = new RecaptchaVerifier('recaptcha-container');
+ * const provider = new PhoneAuthProvider(auth);
+ * const verificationId = await provider.verifyPhoneNumber('+16505550101', applicationVerifier);
+ * // Obtain the verificationCode from the user.
+ * const phoneCredential = PhoneAuthProvider.credential(verificationId, verificationCode);
+ * const userCredential = await signInWithCredential(auth, phoneCredential);
+ * ```
+ *
+ * @public
+ */
+
+
+class PhoneAuthProvider {
+  /**
+   * @param auth - The Firebase {@link Auth} instance in which sign-ins should occur.
+   *
+   */
+  constructor(auth) {
+    /** Always set to {@link ProviderId}.PHONE. */
+    this.providerId = PhoneAuthProvider.PROVIDER_ID;
+    this.auth = _castAuth(auth);
+  }
+  /**
+   *
+   * Starts a phone number authentication flow by sending a verification code to the given phone
+   * number.
+   *
+   * @example
+   * ```javascript
+   * const provider = new PhoneAuthProvider(auth);
+   * const verificationId = await provider.verifyPhoneNumber(phoneNumber, applicationVerifier);
+   * // Obtain verificationCode from the user.
+   * const authCredential = PhoneAuthProvider.credential(verificationId, verificationCode);
+   * const userCredential = await signInWithCredential(auth, authCredential);
+   * ```
+   *
+   * @example
+   * An alternative flow is provided using the `signInWithPhoneNumber` method.
+   * ```javascript
+   * const confirmationResult = signInWithPhoneNumber(auth, phoneNumber, applicationVerifier);
+   * // Obtain verificationCode from the user.
+   * const userCredential = confirmationResult.confirm(verificationCode);
+   * ```
+   *
+   * @param phoneInfoOptions - The user's {@link PhoneInfoOptions}. The phone number should be in
+   * E.164 format (e.g. +16505550101).
+   * @param applicationVerifier - For abuse prevention, this method also requires a
+   * {@link ApplicationVerifier}. This SDK includes a reCAPTCHA-based implementation,
+   * {@link RecaptchaVerifier}.
+   *
+   * @returns A Promise for a verification ID that can be passed to
+   * {@link PhoneAuthProvider.credential} to identify this flow..
+   */
+
+
+  verifyPhoneNumber(phoneOptions, applicationVerifier) {
+    return _verifyPhoneNumber(this.auth, phoneOptions, (0, _util.getModularInstance)(applicationVerifier));
+  }
+  /**
+   * Creates a phone auth credential, given the verification ID from
+   * {@link PhoneAuthProvider.verifyPhoneNumber} and the code that was sent to the user's
+   * mobile device.
+   *
+   * @example
+   * ```javascript
+   * const provider = new PhoneAuthProvider(auth);
+   * const verificationId = provider.verifyPhoneNumber(phoneNumber, applicationVerifier);
+   * // Obtain verificationCode from the user.
+   * const authCredential = PhoneAuthProvider.credential(verificationId, verificationCode);
+   * const userCredential = signInWithCredential(auth, authCredential);
+   * ```
+   *
+   * @example
+   * An alternative flow is provided using the `signInWithPhoneNumber` method.
+   * ```javascript
+   * const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, applicationVerifier);
+   * // Obtain verificationCode from the user.
+   * const userCredential = await confirmationResult.confirm(verificationCode);
+   * ```
+   *
+   * @param verificationId - The verification ID returned from {@link PhoneAuthProvider.verifyPhoneNumber}.
+   * @param verificationCode - The verification code sent to the user's mobile device.
+   *
+   * @returns The auth provider credential.
+   */
+
+
+  static credential(verificationId, verificationCode) {
+    return PhoneAuthCredential._fromVerification(verificationId, verificationCode);
+  }
+  /**
+   * Generates an {@link AuthCredential} from a {@link UserCredential}.
+   * @param userCredential - The user credential.
+   */
+
+
+  static credentialFromResult(userCredential) {
+    const credential = userCredential;
+    return PhoneAuthProvider.credentialFromTaggedObject(credential);
+  }
+  /**
+   * Returns an {@link AuthCredential} when passed an error.
+   *
+   * @remarks
+   *
+   * This method works for errors like
+   * `auth/account-exists-with-different-credentials`. This is useful for
+   * recovering when attempting to set a user's phone number but the number
+   * in question is already tied to another account. For example, the following
+   * code tries to update the current user's phone number, and if that
+   * fails, links the user with the account associated with that number:
+   *
+   * ```js
+   * const provider = new PhoneAuthProvider(auth);
+   * const verificationId = await provider.verifyPhoneNumber(number, verifier);
+   * try {
+   *   const code = ''; // Prompt the user for the verification code
+   *   await updatePhoneNumber(
+   *       auth.currentUser,
+   *       PhoneAuthProvider.credential(verificationId, code));
+   * } catch (e) {
+   *   if (e.code === 'auth/account-exists-with-different-credential') {
+   *     const cred = PhoneAuthProvider.credentialFromError(e);
+   *     await linkWithCredential(auth.currentUser, cred);
+   *   }
+   * }
+   *
+   * // At this point, auth.currentUser.phoneNumber === number.
+   * ```
+   *
+   * @param error - The error to generate a credential from.
+   */
+
+
+  static credentialFromError(error) {
+    return PhoneAuthProvider.credentialFromTaggedObject(error.customData || {});
+  }
+
+  static credentialFromTaggedObject({
+    _tokenResponse: tokenResponse
+  }) {
+    if (!tokenResponse) {
+      return null;
+    }
+
+    const {
+      phoneNumber,
+      temporaryProof
+    } = tokenResponse;
+
+    if (phoneNumber && temporaryProof) {
+      return PhoneAuthCredential._fromTokenResponse(phoneNumber, temporaryProof);
+    }
+
+    return null;
+  }
+
+}
+/** Always set to {@link ProviderId}.PHONE. */
+
+
+exports.P = PhoneAuthProvider;
+PhoneAuthProvider.PROVIDER_ID = "phone"
+/* PHONE */
+;
+/** Always set to {@link SignInMethod}.PHONE. */
+
+PhoneAuthProvider.PHONE_SIGN_IN_METHOD = "phone"
+/* PHONE */
+;
+/**
+ * @license
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Chooses a popup/redirect resolver to use. This prefers the override (which
+ * is directly passed in), and falls back to the property set on the auth
+ * object. If neither are available, this function errors w/ an argument error.
+ */
+
+function _withDefaultResolver(auth, resolverOverride) {
+  if (resolverOverride) {
+    return _getInstance(resolverOverride);
+  }
+
+  _assert(auth._popupRedirectResolver, auth, "argument-error"
+  /* ARGUMENT_ERROR */
+  );
+
+  return auth._popupRedirectResolver;
+}
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+class IdpCredential extends AuthCredential {
+  constructor(params) {
+    super("custom"
+    /* CUSTOM */
+    , "custom"
+    /* CUSTOM */
+    );
+    this.params = params;
+  }
+
+  _getIdTokenResponse(auth) {
+    return signInWithIdp(auth, this._buildIdpRequest());
+  }
+
+  _linkToIdToken(auth, idToken) {
+    return signInWithIdp(auth, this._buildIdpRequest(idToken));
+  }
+
+  _getReauthenticationResolver(auth) {
+    return signInWithIdp(auth, this._buildIdpRequest());
+  }
+
+  _buildIdpRequest(idToken) {
+    const request = {
+      requestUri: this.params.requestUri,
+      sessionId: this.params.sessionId,
+      postBody: this.params.postBody,
+      tenantId: this.params.tenantId,
+      pendingToken: this.params.pendingToken,
+      returnSecureToken: true,
+      returnIdpCredential: true
+    };
+
+    if (idToken) {
+      request.idToken = idToken;
+    }
+
+    return request;
+  }
+
+}
+
+function _signIn(params) {
+  return _signInWithCredential(params.auth, new IdpCredential(params), params.bypassAuthState);
+}
+
+function _reauth(params) {
+  const {
+    auth,
+    user
+  } = params;
+
+  _assert(user, auth, "internal-error"
+  /* INTERNAL_ERROR */
+  );
+
+  return _reauthenticate(user, new IdpCredential(params), params.bypassAuthState);
+}
+
+async function _link(params) {
+  const {
+    auth,
+    user
+  } = params;
+
+  _assert(user, auth, "internal-error"
+  /* INTERNAL_ERROR */
+  );
+
+  return _link$1(user, new IdpCredential(params), params.bypassAuthState);
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Popup event manager. Handles the popup's entire lifecycle; listens to auth
+ * events
+ */
+
+
+class AbstractPopupRedirectOperation {
+  constructor(auth, filter, resolver, user, bypassAuthState = false) {
+    this.auth = auth;
+    this.resolver = resolver;
+    this.user = user;
+    this.bypassAuthState = bypassAuthState;
+    this.pendingPromise = null;
+    this.eventManager = null;
+    this.filter = Array.isArray(filter) ? filter : [filter];
+  }
+
+  execute() {
+    return new Promise(async (resolve, reject) => {
+      this.pendingPromise = {
+        resolve,
+        reject
+      };
+
+      try {
+        this.eventManager = await this.resolver._initialize(this.auth);
+        await this.onExecution();
+        this.eventManager.registerConsumer(this);
+      } catch (e) {
+        this.reject(e);
+      }
+    });
+  }
+
+  async onAuthEvent(event) {
+    const {
+      urlResponse,
+      sessionId,
+      postBody,
+      tenantId,
+      error,
+      type
+    } = event;
+
+    if (error) {
+      this.reject(error);
+      return;
+    }
+
+    const params = {
+      auth: this.auth,
+      requestUri: urlResponse,
+      sessionId: sessionId,
+      tenantId: tenantId || undefined,
+      postBody: postBody || undefined,
+      user: this.user,
+      bypassAuthState: this.bypassAuthState
+    };
+
+    try {
+      this.resolve(await this.getIdpTask(type)(params));
+    } catch (e) {
+      this.reject(e);
+    }
+  }
+
+  onError(error) {
+    this.reject(error);
+  }
+
+  getIdpTask(type) {
+    switch (type) {
+      case "signInViaPopup"
+      /* SIGN_IN_VIA_POPUP */
+      :
+      case "signInViaRedirect"
+      /* SIGN_IN_VIA_REDIRECT */
+      :
+        return _signIn;
+
+      case "linkViaPopup"
+      /* LINK_VIA_POPUP */
+      :
+      case "linkViaRedirect"
+      /* LINK_VIA_REDIRECT */
+      :
+        return _link;
+
+      case "reauthViaPopup"
+      /* REAUTH_VIA_POPUP */
+      :
+      case "reauthViaRedirect"
+      /* REAUTH_VIA_REDIRECT */
+      :
+        return _reauth;
+
+      default:
+        _fail(this.auth, "internal-error"
+        /* INTERNAL_ERROR */
+        );
+
+    }
+  }
+
+  resolve(cred) {
+    debugAssert(this.pendingPromise, 'Pending promise was never set');
+    this.pendingPromise.resolve(cred);
+    this.unregisterAndCleanUp();
+  }
+
+  reject(error) {
+    debugAssert(this.pendingPromise, 'Pending promise was never set');
+    this.pendingPromise.reject(error);
+    this.unregisterAndCleanUp();
+  }
+
+  unregisterAndCleanUp() {
+    if (this.eventManager) {
+      this.eventManager.unregisterConsumer(this);
+    }
+
+    this.pendingPromise = null;
+    this.cleanUp();
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+const _POLL_WINDOW_CLOSE_TIMEOUT = new Delay(2000, 10000);
+/**
+ * Authenticates a Firebase client using a popup-based OAuth authentication flow.
+ *
+ * @remarks
+ * If succeeds, returns the signed in user along with the provider's credential. If sign in was
+ * unsuccessful, returns an error object containing additional information about the error.
+ *
+ * @example
+ * ```javascript
+ * // Sign in using a popup.
+ * const provider = new FacebookAuthProvider();
+ * const result = await signInWithPopup(auth, provider);
+ *
+ * // The signed-in user info.
+ * const user = result.user;
+ * // This gives you a Facebook Access Token.
+ * const credential = provider.credentialFromResult(auth, result);
+ * const token = credential.accessToken;
+ * ```
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param provider - The provider to authenticate. The provider has to be an {@link OAuthProvider}.
+ * Non-OAuth providers like {@link EmailAuthProvider} will throw an error.
+ * @param resolver - An instance of {@link PopupRedirectResolver}, optional
+ * if already supplied to {@link initializeAuth} or provided by {@link getAuth}.
+ *
+ *
+ * @public
+ */
+
+
+async function signInWithPopup(auth, provider, resolver) {
+  const authInternal = _castAuth(auth);
+
+  _assertInstanceOf(auth, provider, FederatedAuthProvider);
+
+  const resolverInternal = _withDefaultResolver(authInternal, resolver);
+
+  const action = new PopupOperation(authInternal, "signInViaPopup"
+  /* SIGN_IN_VIA_POPUP */
+  , provider, resolverInternal);
+  return action.executeNotNull();
+}
+/**
+ * Reauthenticates the current user with the specified {@link OAuthProvider} using a pop-up based
+ * OAuth flow.
+ *
+ * @remarks
+ * If the reauthentication is successful, the returned result will contain the user and the
+ * provider's credential.
+ *
+ * @example
+ * ```javascript
+ * // Sign in using a popup.
+ * const provider = new FacebookAuthProvider();
+ * const result = await signInWithPopup(auth, provider);
+ * // Reauthenticate using a popup.
+ * await reauthenticateWithPopup(result.user, provider);
+ * ```
+ *
+ * @param user - The user.
+ * @param provider - The provider to authenticate. The provider has to be an {@link OAuthProvider}.
+ * Non-OAuth providers like {@link EmailAuthProvider} will throw an error.
+ * @param resolver - An instance of {@link PopupRedirectResolver}, optional
+ * if already supplied to {@link initializeAuth} or provided by {@link getAuth}.
+ *
+ * @public
+ */
+
+
+async function reauthenticateWithPopup(user, provider, resolver) {
+  const userInternal = (0, _util.getModularInstance)(user);
+
+  _assertInstanceOf(userInternal.auth, provider, FederatedAuthProvider);
+
+  const resolverInternal = _withDefaultResolver(userInternal.auth, resolver);
+
+  const action = new PopupOperation(userInternal.auth, "reauthViaPopup"
+  /* REAUTH_VIA_POPUP */
+  , provider, resolverInternal, userInternal);
+  return action.executeNotNull();
+}
+/**
+ * Links the authenticated provider to the user account using a pop-up based OAuth flow.
+ *
+ * @remarks
+ * If the linking is successful, the returned result will contain the user and the provider's credential.
+ *
+ *
+ * @example
+ * ```javascript
+ * // Sign in using some other provider.
+ * const result = await signInWithEmailAndPassword(auth, email, password);
+ * // Link using a popup.
+ * const provider = new FacebookAuthProvider();
+ * await linkWithPopup(result.user, provider);
+ * ```
+ *
+ * @param user - The user.
+ * @param provider - The provider to authenticate. The provider has to be an {@link OAuthProvider}.
+ * Non-OAuth providers like {@link EmailAuthProvider} will throw an error.
+ * @param resolver - An instance of {@link PopupRedirectResolver}, optional
+ * if already supplied to {@link initializeAuth} or provided by {@link getAuth}.
+ *
+ * @public
+ */
+
+
+async function linkWithPopup(user, provider, resolver) {
+  const userInternal = (0, _util.getModularInstance)(user);
+
+  _assertInstanceOf(userInternal.auth, provider, FederatedAuthProvider);
+
+  const resolverInternal = _withDefaultResolver(userInternal.auth, resolver);
+
+  const action = new PopupOperation(userInternal.auth, "linkViaPopup"
+  /* LINK_VIA_POPUP */
+  , provider, resolverInternal, userInternal);
+  return action.executeNotNull();
+}
+/**
+ * Popup event manager. Handles the popup's entire lifecycle; listens to auth
+ * events
+ *
+ */
+
+
+class PopupOperation extends AbstractPopupRedirectOperation {
+  constructor(auth, filter, provider, resolver, user) {
+    super(auth, filter, resolver, user);
+    this.provider = provider;
+    this.authWindow = null;
+    this.pollId = null;
+
+    if (PopupOperation.currentPopupAction) {
+      PopupOperation.currentPopupAction.cancel();
+    }
+
+    PopupOperation.currentPopupAction = this;
+  }
+
+  async executeNotNull() {
+    const result = await this.execute();
+
+    _assert(result, this.auth, "internal-error"
+    /* INTERNAL_ERROR */
+    );
+
+    return result;
+  }
+
+  async onExecution() {
+    debugAssert(this.filter.length === 1, 'Popup operations only handle one event');
+
+    const eventId = _generateEventId();
+
+    this.authWindow = await this.resolver._openPopup(this.auth, this.provider, this.filter[0], // There's always one, see constructor
+    eventId);
+    this.authWindow.associatedEvent = eventId; // Check for web storage support and origin validation _after_ the popup is
+    // loaded. These operations are slow (~1 second or so) Rather than
+    // waiting on them before opening the window, optimistically open the popup
+    // and check for storage support at the same time. If storage support is
+    // not available, this will cause the whole thing to reject properly. It
+    // will also close the popup, but since the promise has already rejected,
+    // the popup closed by user poll will reject into the void.
+
+    this.resolver._originValidation(this.auth).catch(e => {
+      this.reject(e);
+    });
+
+    this.resolver._isIframeWebStorageSupported(this.auth, isSupported => {
+      if (!isSupported) {
+        this.reject(_createError(this.auth, "web-storage-unsupported"
+        /* WEB_STORAGE_UNSUPPORTED */
+        ));
+      }
+    }); // Handle user closure. Notice this does *not* use await
+
+
+    this.pollUserCancellation();
+  }
+
+  get eventId() {
+    var _a;
+
+    return ((_a = this.authWindow) === null || _a === void 0 ? void 0 : _a.associatedEvent) || null;
+  }
+
+  cancel() {
+    this.reject(_createError(this.auth, "cancelled-popup-request"
+    /* EXPIRED_POPUP_REQUEST */
+    ));
+  }
+
+  cleanUp() {
+    if (this.authWindow) {
+      this.authWindow.close();
+    }
+
+    if (this.pollId) {
+      window.clearTimeout(this.pollId);
+    }
+
+    this.authWindow = null;
+    this.pollId = null;
+    PopupOperation.currentPopupAction = null;
+  }
+
+  pollUserCancellation() {
+    const poll = () => {
+      var _a, _b;
+
+      if ((_b = (_a = this.authWindow) === null || _a === void 0 ? void 0 : _a.window) === null || _b === void 0 ? void 0 : _b.closed) {
+        // Make sure that there is sufficient time for whatever action to
+        // complete. The window could have closed but the sign in network
+        // call could still be in flight.
+        this.pollId = window.setTimeout(() => {
+          this.pollId = null;
+          this.reject(_createError(this.auth, "popup-closed-by-user"
+          /* POPUP_CLOSED_BY_USER */
+          ));
+        }, 2000
+        /* AUTH_EVENT */
+        );
+        return;
+      }
+
+      this.pollId = window.setTimeout(poll, _POLL_WINDOW_CLOSE_TIMEOUT.get());
+    };
+
+    poll();
+  }
+
+} // Only one popup is ever shown at once. The lifecycle of the current popup
+// can be managed / cancelled by the constructor.
+
+
+PopupOperation.currentPopupAction = null;
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+const PENDING_REDIRECT_KEY = 'pendingRedirect'; // We only get one redirect outcome for any one auth, so just store it
+// in here.
+
+const redirectOutcomeMap = new Map();
+
+class RedirectAction extends AbstractPopupRedirectOperation {
+  constructor(auth, resolver, bypassAuthState = false) {
+    super(auth, ["signInViaRedirect"
+    /* SIGN_IN_VIA_REDIRECT */
+    , "linkViaRedirect"
+    /* LINK_VIA_REDIRECT */
+    , "reauthViaRedirect"
+    /* REAUTH_VIA_REDIRECT */
+    , "unknown"
+    /* UNKNOWN */
+    ], resolver, undefined, bypassAuthState);
+    this.eventId = null;
+  }
+  /**
+   * Override the execute function; if we already have a redirect result, then
+   * just return it.
+   */
+
+
+  async execute() {
+    let readyOutcome = redirectOutcomeMap.get(this.auth._key());
+
+    if (!readyOutcome) {
+      try {
+        const hasPendingRedirect = await _getAndClearPendingRedirectStatus(this.resolver, this.auth);
+        const result = hasPendingRedirect ? await super.execute() : null;
+
+        readyOutcome = () => Promise.resolve(result);
+      } catch (e) {
+        readyOutcome = () => Promise.reject(e);
+      }
+
+      redirectOutcomeMap.set(this.auth._key(), readyOutcome);
+    }
+
+    return readyOutcome();
+  }
+
+  async onAuthEvent(event) {
+    if (event.type === "signInViaRedirect"
+    /* SIGN_IN_VIA_REDIRECT */
+    ) {
+      return super.onAuthEvent(event);
+    } else if (event.type === "unknown"
+    /* UNKNOWN */
+    ) {
+      // This is a sentinel value indicating there's no pending redirect
+      this.resolve(null);
+      return;
+    }
+
+    if (event.eventId) {
+      const user = await this.auth._redirectUserForId(event.eventId);
+
+      if (user) {
+        this.user = user;
+        return super.onAuthEvent(event);
+      } else {
+        this.resolve(null);
+      }
+    }
+  }
+
+  async onExecution() {}
+
+  cleanUp() {}
+
+}
+
+async function _getAndClearPendingRedirectStatus(resolver, auth) {
+  const key = pendingRedirectKey(auth);
+  const hasPendingRedirect = (await resolverPersistence(resolver)._get(key)) === 'true';
+  await resolverPersistence(resolver)._remove(key);
+  return hasPendingRedirect;
+}
+
+async function _setPendingRedirectStatus(resolver, auth) {
+  return resolverPersistence(resolver)._set(pendingRedirectKey(auth), 'true');
+}
+
+function _clearRedirectOutcomes() {
+  redirectOutcomeMap.clear();
+}
+
+function resolverPersistence(resolver) {
+  return _getInstance(resolver._redirectPersistence);
+}
+
+function pendingRedirectKey(auth) {
+  return _persistenceKeyName(PENDING_REDIRECT_KEY, auth.config.apiKey, auth.name);
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Authenticates a Firebase client using a full-page redirect flow.
+ *
+ * @remarks
+ * To handle the results and errors for this operation, refer to {@link getRedirectResult}.
+ *
+ * @example
+ * ```javascript
+ * // Sign in using a redirect.
+ * const provider = new FacebookAuthProvider();
+ * // You can add additional scopes to the provider:
+ * provider.addScope('user_birthday');
+ * // Start a sign in process for an unauthenticated user.
+ * await signInWithRedirect(auth, provider);
+ * // This will trigger a full page redirect away from your app
+ *
+ * // After returning from the redirect when your app initializes you can obtain the result
+ * const result = await getRedirectResult(auth);
+ * if (result) {
+ *   // This is the signed-in user
+ *   const user = result.user;
+ *   // This gives you a Facebook Access Token.
+ *   const credential = provider.credentialFromResult(auth, result);
+ *   const token = credential.accessToken;
+ * }
+ * // As this API can be used for sign-in, linking and reauthentication,
+ * // check the operationType to determine what triggered this redirect
+ * // operation.
+ * const operationType = result.operationType;
+ * ```
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param provider - The provider to authenticate. The provider has to be an {@link OAuthProvider}.
+ * Non-OAuth providers like {@link EmailAuthProvider} will throw an error.
+ * @param resolver - An instance of {@link PopupRedirectResolver}, optional
+ * if already supplied to {@link initializeAuth} or provided by {@link getAuth}.
+ *
+ * @public
+ */
+
+
+function signInWithRedirect(auth, provider, resolver) {
+  return _signInWithRedirect(auth, provider, resolver);
+}
+
+async function _signInWithRedirect(auth, provider, resolver) {
+  const authInternal = _castAuth(auth);
+
+  _assertInstanceOf(auth, provider, FederatedAuthProvider);
+
+  const resolverInternal = _withDefaultResolver(authInternal, resolver);
+
+  await _setPendingRedirectStatus(resolverInternal, authInternal);
+  return resolverInternal._openRedirect(authInternal, provider, "signInViaRedirect"
+  /* SIGN_IN_VIA_REDIRECT */
+  );
+}
+/**
+ * Reauthenticates the current user with the specified {@link OAuthProvider} using a full-page redirect flow.
+ *
+ * @example
+ * ```javascript
+ * // Sign in using a redirect.
+ * const provider = new FacebookAuthProvider();
+ * const result = await signInWithRedirect(auth, provider);
+ * // This will trigger a full page redirect away from your app
+ *
+ * // After returning from the redirect when your app initializes you can obtain the result
+ * const result = await getRedirectResult(auth);
+ * // Link using a redirect.
+ * await linkWithRedirect(result.user, provider);
+ * // This will again trigger a full page redirect away from your app
+ *
+ * // After returning from the redirect when your app initializes you can obtain the result
+ * const result = await getRedirectResult(auth);
+ * ```
+ *
+ * @param user - The user.
+ * @param provider - The provider to authenticate. The provider has to be an {@link OAuthProvider}.
+ * Non-OAuth providers like {@link EmailAuthProvider} will throw an error.
+ * @param resolver - An instance of {@link PopupRedirectResolver}, optional
+ * if already supplied to {@link initializeAuth} or provided by {@link getAuth}.
+ *
+ * @public
+ */
+
+
+function reauthenticateWithRedirect(user, provider, resolver) {
+  return _reauthenticateWithRedirect(user, provider, resolver);
+}
+
+async function _reauthenticateWithRedirect(user, provider, resolver) {
+  const userInternal = (0, _util.getModularInstance)(user);
+
+  _assertInstanceOf(userInternal.auth, provider, FederatedAuthProvider); // Allow the resolver to error before persisting the redirect user
+
+
+  const resolverInternal = _withDefaultResolver(userInternal.auth, resolver);
+
+  await _setPendingRedirectStatus(resolverInternal, userInternal.auth);
+  const eventId = await prepareUserForRedirect(userInternal);
+  return resolverInternal._openRedirect(userInternal.auth, provider, "reauthViaRedirect"
+  /* REAUTH_VIA_REDIRECT */
+  , eventId);
+}
+/**
+ * Links the {@link OAuthProvider} to the user account using a full-page redirect flow.
+ *
+ * @example
+ * ```javascript
+ * // Sign in using some other provider.
+ * const result = await signInWithEmailAndPassword(auth, email, password);
+ * // Link using a redirect.
+ * const provider = new FacebookAuthProvider();
+ * await linkWithRedirect(result.user, provider);
+ * // This will trigger a full page redirect away from your app
+ *
+ * // After returning from the redirect when your app initializes you can obtain the result
+ * const result = await getRedirectResult(auth);
+ * ```
+ *
+ * @param user - The user.
+ * @param provider - The provider to authenticate. The provider has to be an {@link OAuthProvider}.
+ * Non-OAuth providers like {@link EmailAuthProvider} will throw an error.
+ * @param resolver - An instance of {@link PopupRedirectResolver}, optional
+ * if already supplied to {@link initializeAuth} or provided by {@link getAuth}.
+ *
+ *
+ * @public
+ */
+
+
+function linkWithRedirect(user, provider, resolver) {
+  return _linkWithRedirect(user, provider, resolver);
+}
+
+async function _linkWithRedirect(user, provider, resolver) {
+  const userInternal = (0, _util.getModularInstance)(user);
+
+  _assertInstanceOf(userInternal.auth, provider, FederatedAuthProvider); // Allow the resolver to error before persisting the redirect user
+
+
+  const resolverInternal = _withDefaultResolver(userInternal.auth, resolver);
+
+  await _assertLinkedStatus(false, userInternal, provider.providerId);
+  await _setPendingRedirectStatus(resolverInternal, userInternal.auth);
+  const eventId = await prepareUserForRedirect(userInternal);
+  return resolverInternal._openRedirect(userInternal.auth, provider, "linkViaRedirect"
+  /* LINK_VIA_REDIRECT */
+  , eventId);
+}
+/**
+ * Returns a {@link UserCredential} from the redirect-based sign-in flow.
+ *
+ * @remarks
+ * If sign-in succeeded, returns the signed in user. If sign-in was unsuccessful, fails with an
+ * error. If no redirect operation was called, returns a {@link UserCredential}
+ * with a null `user`.
+ *
+ * @example
+ * ```javascript
+ * // Sign in using a redirect.
+ * const provider = new FacebookAuthProvider();
+ * // You can add additional scopes to the provider:
+ * provider.addScope('user_birthday');
+ * // Start a sign in process for an unauthenticated user.
+ * await signInWithRedirect(auth, provider);
+ * // This will trigger a full page redirect away from your app
+ *
+ * // After returning from the redirect when your app initializes you can obtain the result
+ * const result = await getRedirectResult(auth);
+ * if (result) {
+ *   // This is the signed-in user
+ *   const user = result.user;
+ *   // This gives you a Facebook Access Token.
+ *   const credential = provider.credentialFromResult(auth, result);
+ *   const token = credential.accessToken;
+ * }
+ * // As this API can be used for sign-in, linking and reauthentication,
+ * // check the operationType to determine what triggered this redirect
+ * // operation.
+ * const operationType = result.operationType;
+ * ```
+ *
+ * @param auth - The {@link Auth} instance.
+ * @param resolver - An instance of {@link PopupRedirectResolver}, optional
+ * if already supplied to {@link initializeAuth} or provided by {@link getAuth}.
+ *
+ * @public
+ */
+
+
+async function getRedirectResult(auth, resolver) {
+  await _castAuth(auth)._initializationPromise;
+  return _getRedirectResult(auth, resolver, false);
+}
+
+async function _getRedirectResult(auth, resolverExtern, bypassAuthState = false) {
+  const authInternal = _castAuth(auth);
+
+  const resolver = _withDefaultResolver(authInternal, resolverExtern);
+
+  const action = new RedirectAction(authInternal, resolver, bypassAuthState);
+  const result = await action.execute();
+
+  if (result && !bypassAuthState) {
+    delete result.user._redirectEventId;
+    await authInternal._persistUserIfCurrent(result.user);
+    await authInternal._setRedirectUser(null, resolverExtern);
+  }
+
+  return result;
+}
+
+async function prepareUserForRedirect(user) {
+  const eventId = _generateEventId(`${user.uid}:::`);
+
+  user._redirectEventId = eventId;
+  await user.auth._setRedirectUser(user);
+  await user.auth._persistUserIfCurrent(user);
+  return eventId;
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+// The amount of time to store the UIDs of seen events; this is
+// set to 10 min by default
+
+
+const EVENT_DUPLICATION_CACHE_DURATION_MS = 10 * 60 * 1000;
+
+class AuthEventManager {
+  constructor(auth) {
+    this.auth = auth;
+    this.cachedEventUids = new Set();
+    this.consumers = new Set();
+    this.queuedRedirectEvent = null;
+    this.hasHandledPotentialRedirect = false;
+    this.lastProcessedEventTime = Date.now();
+  }
+
+  registerConsumer(authEventConsumer) {
+    this.consumers.add(authEventConsumer);
+
+    if (this.queuedRedirectEvent && this.isEventForConsumer(this.queuedRedirectEvent, authEventConsumer)) {
+      this.sendToConsumer(this.queuedRedirectEvent, authEventConsumer);
+      this.saveEventToCache(this.queuedRedirectEvent);
+      this.queuedRedirectEvent = null;
+    }
+  }
+
+  unregisterConsumer(authEventConsumer) {
+    this.consumers.delete(authEventConsumer);
+  }
+
+  onEvent(event) {
+    // Check if the event has already been handled
+    if (this.hasEventBeenHandled(event)) {
+      return false;
+    }
+
+    let handled = false;
+    this.consumers.forEach(consumer => {
+      if (this.isEventForConsumer(event, consumer)) {
+        handled = true;
+        this.sendToConsumer(event, consumer);
+        this.saveEventToCache(event);
+      }
+    });
+
+    if (this.hasHandledPotentialRedirect || !isRedirectEvent(event)) {
+      // If we've already seen a redirect before, or this is a popup event,
+      // bail now
+      return handled;
+    }
+
+    this.hasHandledPotentialRedirect = true; // If the redirect wasn't handled, hang on to it
+
+    if (!handled) {
+      this.queuedRedirectEvent = event;
+      handled = true;
+    }
+
+    return handled;
+  }
+
+  sendToConsumer(event, consumer) {
+    var _a;
+
+    if (event.error && !isNullRedirectEvent(event)) {
+      const code = ((_a = event.error.code) === null || _a === void 0 ? void 0 : _a.split('auth/')[1]) || "internal-error"
+      /* INTERNAL_ERROR */
+      ;
+      consumer.onError(_createError(this.auth, code));
+    } else {
+      consumer.onAuthEvent(event);
+    }
+  }
+
+  isEventForConsumer(event, consumer) {
+    const eventIdMatches = consumer.eventId === null || !!event.eventId && event.eventId === consumer.eventId;
+    return consumer.filter.includes(event.type) && eventIdMatches;
+  }
+
+  hasEventBeenHandled(event) {
+    if (Date.now() - this.lastProcessedEventTime >= EVENT_DUPLICATION_CACHE_DURATION_MS) {
+      this.cachedEventUids.clear();
+    }
+
+    return this.cachedEventUids.has(eventUid(event));
+  }
+
+  saveEventToCache(event) {
+    this.cachedEventUids.add(eventUid(event));
+    this.lastProcessedEventTime = Date.now();
+  }
+
+}
+
+exports.az = AuthEventManager;
+
+function eventUid(e) {
+  return [e.type, e.eventId, e.sessionId, e.tenantId].filter(v => v).join('-');
+}
+
+function isNullRedirectEvent({
+  type,
+  error
+}) {
+  return type === "unknown"
+  /* UNKNOWN */
+  && (error === null || error === void 0 ? void 0 : error.code) === `auth/${"no-auth-event"
+  /* NO_AUTH_EVENT */
+  }`;
+}
+
+function isRedirectEvent(event) {
+  switch (event.type) {
+    case "signInViaRedirect"
+    /* SIGN_IN_VIA_REDIRECT */
+    :
+    case "linkViaRedirect"
+    /* LINK_VIA_REDIRECT */
+    :
+    case "reauthViaRedirect"
+    /* REAUTH_VIA_REDIRECT */
+    :
+      return true;
+
+    case "unknown"
+    /* UNKNOWN */
+    :
+      return isNullRedirectEvent(event);
+
+    default:
+      return false;
+  }
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+async function _getProjectConfig(auth, request = {}) {
+  return _performApiRequest(auth, "GET"
+  /* GET */
+  , "/v1/projects"
+  /* GET_PROJECT_CONFIG */
+  , request);
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+const IP_ADDRESS_REGEX = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+const HTTP_REGEX = /^https?/;
+
+async function _validateOrigin(auth) {
+  // Skip origin validation if we are in an emulated environment
+  if (auth.config.emulator) {
+    return;
+  }
+
+  const {
+    authorizedDomains
+  } = await _getProjectConfig(auth);
+
+  for (const domain of authorizedDomains) {
+    try {
+      if (matchDomain(domain)) {
+        return;
+      }
+    } catch (_a) {// Do nothing if there's a URL error; just continue searching
+    }
+  } // In the old SDK, this error also provides helpful messages.
+
+
+  _fail(auth, "unauthorized-domain"
+  /* INVALID_ORIGIN */
+  );
+}
+
+function matchDomain(expected) {
+  const currentUrl = _getCurrentUrl();
+
+  const {
+    protocol,
+    hostname
+  } = new URL(currentUrl);
+
+  if (expected.startsWith('chrome-extension://')) {
+    const ceUrl = new URL(expected);
+
+    if (ceUrl.hostname === '' && hostname === '') {
+      // For some reason we're not parsing chrome URLs properly
+      return protocol === 'chrome-extension:' && expected.replace('chrome-extension://', '') === currentUrl.replace('chrome-extension://', '');
+    }
+
+    return protocol === 'chrome-extension:' && ceUrl.hostname === hostname;
+  }
+
+  if (!HTTP_REGEX.test(protocol)) {
+    return false;
+  }
+
+  if (IP_ADDRESS_REGEX.test(expected)) {
+    // The domain has to be exactly equal to the pattern, as an IP domain will
+    // only contain the IP, no extra character.
+    return hostname === expected;
+  } // Dots in pattern should be escaped.
+
+
+  const escapedDomainPattern = expected.replace(/\./g, '\\.'); // Non ip address domains.
+  // domain.com = *.domain.com OR domain.com
+
+  const re = new RegExp('^(.+\\.' + escapedDomainPattern + '|' + escapedDomainPattern + ')$', 'i');
+  return re.test(hostname);
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+const NETWORK_TIMEOUT = new Delay(30000, 60000);
+/**
+ * Reset unlaoded GApi modules. If gapi.load fails due to a network error,
+ * it will stop working after a retrial. This is a hack to fix this issue.
+ */
+
+function resetUnloadedGapiModules() {
+  // Clear last failed gapi.load state to force next gapi.load to first
+  // load the failed gapi.iframes module.
+  // Get gapix.beacon context.
+  const beacon = _window().___jsl; // Get current hint.
+
+
+  if (beacon === null || beacon === void 0 ? void 0 : beacon.H) {
+    // Get gapi hint.
+    for (const hint of Object.keys(beacon.H)) {
+      // Requested modules.
+      beacon.H[hint].r = beacon.H[hint].r || []; // Loaded modules.
+
+      beacon.H[hint].L = beacon.H[hint].L || []; // Set requested modules to a copy of the loaded modules.
+
+      beacon.H[hint].r = [...beacon.H[hint].L]; // Clear pending callbacks.
+
+      if (beacon.CP) {
+        for (let i = 0; i < beacon.CP.length; i++) {
+          // Remove all failed pending callbacks.
+          beacon.CP[i] = null;
+        }
+      }
+    }
+  }
+}
+
+function loadGapi(auth) {
+  return new Promise((resolve, reject) => {
+    var _a, _b, _c; // Function to run when gapi.load is ready.
+
+
+    function loadGapiIframe() {
+      // The developer may have tried to previously run gapi.load and failed.
+      // Run this to fix that.
+      resetUnloadedGapiModules();
+      gapi.load('gapi.iframes', {
+        callback: () => {
+          resolve(gapi.iframes.getContext());
+        },
+        ontimeout: () => {
+          // The above reset may be sufficient, but having this reset after
+          // failure ensures that if the developer calls gapi.load after the
+          // connection is re-established and before another attempt to embed
+          // the iframe, it would work and would not be broken because of our
+          // failed attempt.
+          // Timeout when gapi.iframes.Iframe not loaded.
+          resetUnloadedGapiModules();
+          reject(_createError(auth, "network-request-failed"
+          /* NETWORK_REQUEST_FAILED */
+          ));
+        },
+        timeout: NETWORK_TIMEOUT.get()
+      });
+    }
+
+    if ((_b = (_a = _window().gapi) === null || _a === void 0 ? void 0 : _a.iframes) === null || _b === void 0 ? void 0 : _b.Iframe) {
+      // If gapi.iframes.Iframe available, resolve.
+      resolve(gapi.iframes.getContext());
+    } else if (!!((_c = _window().gapi) === null || _c === void 0 ? void 0 : _c.load)) {
+      // Gapi loader ready, load gapi.iframes.
+      loadGapiIframe();
+    } else {
+      // Create a new iframe callback when this is called so as not to overwrite
+      // any previous defined callback. This happens if this method is called
+      // multiple times in parallel and could result in the later callback
+      // overwriting the previous one. This would end up with a iframe
+      // timeout.
+      const cbName = _generateCallbackName('iframefcb'); // GApi loader not available, dynamically load platform.js.
+
+
+      _window()[cbName] = () => {
+        // GApi loader should be ready.
+        if (!!gapi.load) {
+          loadGapiIframe();
+        } else {
+          // Gapi loader failed, throw error.
+          reject(_createError(auth, "network-request-failed"
+          /* NETWORK_REQUEST_FAILED */
+          ));
+        }
+      }; // Load GApi loader.
+
+
+      return _loadJS(`https://apis.google.com/js/api.js?onload=${cbName}`);
+    }
+  }).catch(error => {
+    // Reset cached promise to allow for retrial.
+    cachedGApiLoader = null;
+    throw error;
+  });
+}
+
+let cachedGApiLoader = null;
+
+function _loadGapi(auth) {
+  cachedGApiLoader = cachedGApiLoader || loadGapi(auth);
+  return cachedGApiLoader;
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+const PING_TIMEOUT = new Delay(5000, 15000);
+const IFRAME_PATH = '__/auth/iframe';
+const EMULATED_IFRAME_PATH = 'emulator/auth/iframe';
+const IFRAME_ATTRIBUTES = {
+  style: {
+    position: 'absolute',
+    top: '-100px',
+    width: '1px',
+    height: '1px'
+  }
+}; // Map from apiHost to endpoint ID for passing into iframe. In current SDK, apiHost can be set to
+// anything (not from a list of endpoints with IDs as in legacy), so this is the closest we can get.
+
+const EID_FROM_APIHOST = new Map([["identitytoolkit.googleapis.com"
+/* API_HOST */
+, 'p'], ['staging-identitytoolkit.sandbox.googleapis.com', 's'], ['test-identitytoolkit.sandbox.googleapis.com', 't'] // test
+]);
+
+function getIframeUrl(auth) {
+  const config = auth.config;
+
+  _assert(config.authDomain, auth, "auth-domain-config-required"
+  /* MISSING_AUTH_DOMAIN */
+  );
+
+  const url = config.emulator ? _emulatorUrl(config, EMULATED_IFRAME_PATH) : `https://${auth.config.authDomain}/${IFRAME_PATH}`;
+  const params = {
+    apiKey: config.apiKey,
+    appName: auth.name,
+    v: _app.SDK_VERSION
+  };
+  const eid = EID_FROM_APIHOST.get(auth.config.apiHost);
+
+  if (eid) {
+    params.eid = eid;
+  }
+
+  const frameworks = auth._getFrameworks();
+
+  if (frameworks.length) {
+    params.fw = frameworks.join(',');
+  }
+
+  return `${url}?${(0, _util.querystring)(params).slice(1)}`;
+}
+
+async function _openIframe(auth) {
+  const context = await _loadGapi(auth);
+
+  const gapi = _window().gapi;
+
+  _assert(gapi, auth, "internal-error"
+  /* INTERNAL_ERROR */
+  );
+
+  return context.open({
+    where: document.body,
+    url: getIframeUrl(auth),
+    messageHandlersFilter: gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER,
+    attributes: IFRAME_ATTRIBUTES,
+    dontclear: true
+  }, iframe => new Promise(async (resolve, reject) => {
+    await iframe.restyle({
+      // Prevent iframe from closing on mouse out.
+      setHideOnLeave: false
+    });
+
+    const networkError = _createError(auth, "network-request-failed"
+    /* NETWORK_REQUEST_FAILED */
+    ); // Confirm iframe is correctly loaded.
+    // To fallback on failure, set a timeout.
+
+
+    const networkErrorTimer = _window().setTimeout(() => {
+      reject(networkError);
+    }, PING_TIMEOUT.get()); // Clear timer and resolve pending iframe ready promise.
+
+
+    function clearTimerAndResolve() {
+      _window().clearTimeout(networkErrorTimer);
+
+      resolve(iframe);
+    } // This returns an IThenable. However the reject part does not call
+    // when the iframe is not loaded.
+
+
+    iframe.ping(clearTimerAndResolve).then(clearTimerAndResolve, () => {
+      reject(networkError);
+    });
+  }));
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+const BASE_POPUP_OPTIONS = {
+  location: 'yes',
+  resizable: 'yes',
+  statusbar: 'yes',
+  toolbar: 'no'
+};
+const DEFAULT_WIDTH = 500;
+const DEFAULT_HEIGHT = 600;
+const TARGET_BLANK = '_blank';
+const FIREFOX_EMPTY_URL = 'http://localhost';
+
+class AuthPopup {
+  constructor(window) {
+    this.window = window;
+    this.associatedEvent = null;
+  }
+
+  close() {
+    if (this.window) {
+      try {
+        this.window.close();
+      } catch (e) {}
+    }
+  }
+
+}
+
+exports.aH = AuthPopup;
+
+function _open(auth, url, name, width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT) {
+  const top = Math.max((window.screen.availHeight - height) / 2, 0).toString();
+  const left = Math.max((window.screen.availWidth - width) / 2, 0).toString();
+  let target = '';
+  const options = Object.assign(Object.assign({}, BASE_POPUP_OPTIONS), {
+    width: width.toString(),
+    height: height.toString(),
+    top,
+    left
+  }); // Chrome iOS 7 and 8 is returning an undefined popup win when target is
+  // specified, even though the popup is not necessarily blocked.
+
+  const ua = (0, _util.getUA)().toLowerCase();
+
+  if (name) {
+    target = _isChromeIOS(ua) ? TARGET_BLANK : name;
+  }
+
+  if (_isFirefox(ua)) {
+    // Firefox complains when invalid URLs are popped out. Hacky way to bypass.
+    url = url || FIREFOX_EMPTY_URL; // Firefox disables by default scrolling on popup windows, which can create
+    // issues when the user has many Google accounts, for instance.
+
+    options.scrollbars = 'yes';
+  }
+
+  const optionsString = Object.entries(options).reduce((accum, [key, value]) => `${accum}${key}=${value},`, '');
+
+  if (_isIOSStandalone(ua) && target !== '_self') {
+    openAsNewWindowIOS(url || '', target);
+    return new AuthPopup(null);
+  } // about:blank getting sanitized causing browsers like IE/Edge to display
+  // brief error message before redirecting to handler.
+
+
+  const newWin = window.open(url || '', target, optionsString);
+
+  _assert(newWin, auth, "popup-blocked"
+  /* POPUP_BLOCKED */
+  ); // Flaky on IE edge, encapsulate with a try and catch.
+
+
+  try {
+    newWin.focus();
+  } catch (e) {}
+
+  return new AuthPopup(newWin);
+}
+
+function openAsNewWindowIOS(url, target) {
+  const el = document.createElement('a');
+  el.href = url;
+  el.target = target;
+  const click = document.createEvent('MouseEvent');
+  click.initMouseEvent('click', true, true, window, 1, 0, 0, 0, 0, false, false, false, false, 1, null);
+  el.dispatchEvent(click);
+}
+/**
+ * @license
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * URL for Authentication widget which will initiate the OAuth handshake
+ *
+ * @internal
+ */
+
+
+const WIDGET_PATH = '__/auth/handler';
+/**
+ * URL for emulated environment
+ *
+ * @internal
+ */
+
+const EMULATOR_WIDGET_PATH = 'emulator/auth/handler';
+
+function _getRedirectUrl(auth, provider, authType, redirectUrl, eventId, additionalParams) {
+  _assert(auth.config.authDomain, auth, "auth-domain-config-required"
+  /* MISSING_AUTH_DOMAIN */
+  );
+
+  _assert(auth.config.apiKey, auth, "invalid-api-key"
+  /* INVALID_API_KEY */
+  );
+
+  const params = {
+    apiKey: auth.config.apiKey,
+    appName: auth.name,
+    authType,
+    redirectUrl,
+    v: _app.SDK_VERSION,
+    eventId
+  };
+
+  if (provider instanceof FederatedAuthProvider) {
+    provider.setDefaultLanguage(auth.languageCode);
+    params.providerId = provider.providerId || '';
+
+    if (!(0, _util.isEmpty)(provider.getCustomParameters())) {
+      params.customParameters = JSON.stringify(provider.getCustomParameters());
+    } // TODO set additionalParams from the provider as well?
+
+
+    for (const [key, value] of Object.entries(additionalParams || {})) {
+      params[key] = value;
+    }
+  }
+
+  if (provider instanceof BaseOAuthProvider) {
+    const scopes = provider.getScopes().filter(scope => scope !== '');
+
+    if (scopes.length > 0) {
+      params.scopes = scopes.join(',');
+    }
+  }
+
+  if (auth.tenantId) {
+    params.tid = auth.tenantId;
+  } // TODO: maybe set eid as endipointId
+  // TODO: maybe set fw as Frameworks.join(",")
+
+
+  const paramsDict = params;
+
+  for (const key of Object.keys(paramsDict)) {
+    if (paramsDict[key] === undefined) {
+      delete paramsDict[key];
+    }
+  }
+
+  return `${getHandlerBase(auth)}?${(0, _util.querystring)(paramsDict).slice(1)}`;
+}
+
+function getHandlerBase({
+  config
+}) {
+  if (!config.emulator) {
+    return `https://${config.authDomain}/${WIDGET_PATH}`;
+  }
+
+  return _emulatorUrl(config, EMULATOR_WIDGET_PATH);
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * The special web storage event
+ *
+ */
+
+
+const WEB_STORAGE_SUPPORT_KEY = 'webStorageSupport';
+
+class BrowserPopupRedirectResolver {
+  constructor() {
+    this.eventManagers = {};
+    this.iframes = {};
+    this.originValidationPromises = {};
+    this._redirectPersistence = browserSessionPersistence;
+    this._completeRedirectFn = _getRedirectResult;
+  } // Wrapping in async even though we don't await anywhere in order
+  // to make sure errors are raised as promise rejections
+
+
+  async _openPopup(auth, provider, authType, eventId) {
+    var _a;
+
+    debugAssert((_a = this.eventManagers[auth._key()]) === null || _a === void 0 ? void 0 : _a.manager, '_initialize() not called before _openPopup()');
+
+    const url = _getRedirectUrl(auth, provider, authType, _getCurrentUrl(), eventId);
+
+    return _open(auth, url, _generateEventId());
+  }
+
+  async _openRedirect(auth, provider, authType, eventId) {
+    await this._originValidation(auth);
+
+    _setWindowLocation(_getRedirectUrl(auth, provider, authType, _getCurrentUrl(), eventId));
+
+    return new Promise(() => {});
+  }
+
+  _initialize(auth) {
+    const key = auth._key();
+
+    if (this.eventManagers[key]) {
+      const {
+        manager,
+        promise
+      } = this.eventManagers[key];
+
+      if (manager) {
+        return Promise.resolve(manager);
+      } else {
+        debugAssert(promise, 'If manager is not set, promise should be');
+        return promise;
+      }
+    }
+
+    const promise = this.initAndGetManager(auth);
+    this.eventManagers[key] = {
+      promise
+    };
+    return promise;
+  }
+
+  async initAndGetManager(auth) {
+    const iframe = await _openIframe(auth);
+    const manager = new AuthEventManager(auth);
+    iframe.register('authEvent', iframeEvent => {
+      _assert(iframeEvent === null || iframeEvent === void 0 ? void 0 : iframeEvent.authEvent, auth, "invalid-auth-event"
+      /* INVALID_AUTH_EVENT */
+      ); // TODO: Consider splitting redirect and popup events earlier on
+
+
+      const handled = manager.onEvent(iframeEvent.authEvent);
+      return {
+        status: handled ? "ACK"
+        /* ACK */
+        : "ERROR"
+        /* ERROR */
+
+      };
+    }, gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER);
+    this.eventManagers[auth._key()] = {
+      manager
+    };
+    this.iframes[auth._key()] = iframe;
+    return manager;
+  }
+
+  _isIframeWebStorageSupported(auth, cb) {
+    const iframe = this.iframes[auth._key()];
+
+    iframe.send(WEB_STORAGE_SUPPORT_KEY, {
+      type: WEB_STORAGE_SUPPORT_KEY
+    }, result => {
+      var _a;
+
+      const isSupported = (_a = result === null || result === void 0 ? void 0 : result[0]) === null || _a === void 0 ? void 0 : _a[WEB_STORAGE_SUPPORT_KEY];
+
+      if (isSupported !== undefined) {
+        cb(!!isSupported);
+      }
+
+      _fail(auth, "internal-error"
+      /* INTERNAL_ERROR */
+      );
+    }, gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER);
+  }
+
+  _originValidation(auth) {
+    const key = auth._key();
+
+    if (!this.originValidationPromises[key]) {
+      this.originValidationPromises[key] = _validateOrigin(auth);
+    }
+
+    return this.originValidationPromises[key];
+  }
+
+  get _shouldInitProactively() {
+    // Mobile browsers and Safari need to optimistically initialize
+    return _isMobileBrowser() || _isSafari() || _isIOS();
+  }
+
+}
+/**
+ * An implementation of {@link PopupRedirectResolver} suitable for browser
+ * based applications.
+ *
+ * @public
+ */
+
+
+const browserPopupRedirectResolver = BrowserPopupRedirectResolver;
+exports.k = browserPopupRedirectResolver;
+
+class MultiFactorAssertionImpl {
+  constructor(factorId) {
+    this.factorId = factorId;
+  }
+
+  _process(auth, session, displayName) {
+    switch (session.type) {
+      case "enroll"
+      /* ENROLL */
+      :
+        return this._finalizeEnroll(auth, session.credential, displayName);
+
+      case "signin"
+      /* SIGN_IN */
+      :
+        return this._finalizeSignIn(auth, session.credential);
+
+      default:
+        return debugFail('unexpected MultiFactorSessionType');
+    }
+  }
+
+}
+/**
+ * {@inheritdoc PhoneMultiFactorAssertion}
+ *
+ * @public
+ */
+
+
+class PhoneMultiFactorAssertionImpl extends MultiFactorAssertionImpl {
+  constructor(credential) {
+    super("phone"
+    /* PHONE */
+    );
+    this.credential = credential;
+  }
+  /** @internal */
+
+
+  static _fromCredential(credential) {
+    return new PhoneMultiFactorAssertionImpl(credential);
+  }
+  /** @internal */
+
+
+  _finalizeEnroll(auth, idToken, displayName) {
+    return finalizeEnrollPhoneMfa(auth, {
+      idToken,
+      displayName,
+      phoneVerificationInfo: this.credential._makeVerificationRequest()
+    });
+  }
+  /** @internal */
+
+
+  _finalizeSignIn(auth, mfaPendingCredential) {
+    return finalizeSignInPhoneMfa(auth, {
+      mfaPendingCredential,
+      phoneVerificationInfo: this.credential._makeVerificationRequest()
+    });
+  }
+
+}
+/**
+ * Provider for generating a {@link PhoneMultiFactorAssertion}.
+ *
+ * @public
+ */
+
+
+class PhoneMultiFactorGenerator {
+  constructor() {}
+  /**
+   * Provides a {@link PhoneMultiFactorAssertion} to confirm ownership of the phone second factor.
+   *
+   * @param phoneAuthCredential - A credential provided by {@link PhoneAuthProvider.credential}.
+   * @returns A {@link PhoneMultiFactorAssertion} which can be used with
+   * {@link MultiFactorResolver.resolveSignIn}
+   */
+
+
+  static assertion(credential) {
+    return PhoneMultiFactorAssertionImpl._fromCredential(credential);
+  }
+
+}
+
+exports.m = PhoneMultiFactorGenerator;
+var name = "@firebase/auth";
+var version = "0.17.2";
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+class AuthInterop {
+  constructor(auth) {
+    this.auth = auth;
+    this.internalListeners = new Map();
+  }
+
+  getUid() {
+    var _a;
+
+    this.assertAuthConfigured();
+    return ((_a = this.auth.currentUser) === null || _a === void 0 ? void 0 : _a.uid) || null;
+  }
+
+  async getToken(forceRefresh) {
+    this.assertAuthConfigured();
+    await this.auth._initializationPromise;
+
+    if (!this.auth.currentUser) {
+      return null;
+    }
+
+    const accessToken = await this.auth.currentUser.getIdToken(forceRefresh);
+    return {
+      accessToken
+    };
+  }
+
+  addAuthTokenListener(listener) {
+    this.assertAuthConfigured();
+
+    if (this.internalListeners.has(listener)) {
+      return;
+    }
+
+    const unsubscribe = this.auth.onIdTokenChanged(user => {
+      var _a;
+
+      listener(((_a = user) === null || _a === void 0 ? void 0 : _a.stsTokenManager.accessToken) || null);
+    });
+    this.internalListeners.set(listener, unsubscribe);
+    this.updateProactiveRefresh();
+  }
+
+  removeAuthTokenListener(listener) {
+    this.assertAuthConfigured();
+    const unsubscribe = this.internalListeners.get(listener);
+
+    if (!unsubscribe) {
+      return;
+    }
+
+    this.internalListeners.delete(listener);
+    unsubscribe();
+    this.updateProactiveRefresh();
+  }
+
+  assertAuthConfigured() {
+    _assert(this.auth._initializationPromise, "dependent-sdk-initialized-before-auth"
+    /* DEPENDENT_SDK_INIT_BEFORE_AUTH */
+    );
+  }
+
+  updateProactiveRefresh() {
+    if (this.internalListeners.size > 0) {
+      this.auth._startProactiveRefresh();
+    } else {
+      this.auth._stopProactiveRefresh();
+    }
+  }
+
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+function getVersionForPlatform(clientPlatform) {
+  switch (clientPlatform) {
+    case "Node"
+    /* NODE */
+    :
+      return 'node';
+
+    case "ReactNative"
+    /* REACT_NATIVE */
+    :
+      return 'rn';
+
+    case "Worker"
+    /* WORKER */
+    :
+      return 'webworker';
+
+    case "Cordova"
+    /* CORDOVA */
+    :
+      return 'cordova';
+
+    default:
+      return undefined;
+  }
+}
+/** @internal */
+
+
+function registerAuth(clientPlatform) {
+  (0, _app._registerComponent)(new _component.Component("auth"
+  /* AUTH */
+  , (container, {
+    options: deps
+  }) => {
+    const app = container.getProvider('app').getImmediate();
+    const {
+      apiKey,
+      authDomain
+    } = app.options;
+    return (app => {
+      _assert(apiKey && !apiKey.includes(':'), "invalid-api-key"
+      /* INVALID_API_KEY */
+      , {
+        appName: app.name
+      }); // Auth domain is optional if IdP sign in isn't being used
+
+
+      _assert(!(authDomain === null || authDomain === void 0 ? void 0 : authDomain.includes(':')), "argument-error"
+      /* ARGUMENT_ERROR */
+      , {
+        appName: app.name
+      });
+
+      const config = {
+        apiKey,
+        authDomain,
+        clientPlatform,
+        apiHost: "identitytoolkit.googleapis.com"
+        /* API_HOST */
+        ,
+        tokenApiHost: "securetoken.googleapis.com"
+        /* TOKEN_API_HOST */
+        ,
+        apiScheme: "https"
+        /* API_SCHEME */
+        ,
+        sdkClientVersion: _getClientVersion(clientPlatform)
+      };
+      const authInstance = new AuthImpl(app, config);
+
+      _initializeAuthInstance(authInstance, deps);
+
+      return authInstance;
+    })(app);
+  }, "PUBLIC"
+  /* PUBLIC */
+  )
+  /**
+   * Auth can only be initialized by explicitly calling getAuth() or initializeAuth()
+   * For why we do this, See go/firebase-next-auth-init
+   */
+  .setInstantiationMode("EXPLICIT"
+  /* EXPLICIT */
+  )
+  /**
+   * Because all firebase products that depend on auth depend on auth-internal directly,
+   * we need to initialize auth-internal after auth is initialized to make it available to other firebase products.
+   */
+  .setInstanceCreatedCallback((container, _instanceIdentifier, _instance) => {
+    const authInternalProvider = container.getProvider("auth-internal"
+    /* AUTH_INTERNAL */
+    );
+    authInternalProvider.initialize();
+  }));
+  (0, _app._registerComponent)(new _component.Component("auth-internal"
+  /* AUTH_INTERNAL */
+  , container => {
+    const auth = _castAuth(container.getProvider("auth"
+    /* AUTH */
+    ).getImmediate());
+
+    return (auth => new AuthInterop(auth))(auth);
+  }, "PRIVATE"
+  /* PRIVATE */
+  ).setInstantiationMode("EXPLICIT"
+  /* EXPLICIT */
+  ));
+  (0, _app.registerVersion)(name, version, getVersionForPlatform(clientPlatform));
+}
+/**
+ * @license
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Returns the Auth instance associated with the provided {@link @firebase/app#FirebaseApp}.
+ * If no instance exists, initializes an Auth instance with platform-specific default dependencies.
+ *
+ * @param app - The Firebase App.
+ *
+ * @public
+ */
+
+
+function getAuth(app = (0, _app.getApp)()) {
+  const provider = (0, _app._getProvider)(app, 'auth');
+
+  if (provider.isInitialized()) {
+    return provider.getImmediate();
+  }
+
+  return initializeAuth(app, {
+    popupRedirectResolver: browserPopupRedirectResolver,
+    persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence]
+  });
+}
+
+registerAuth("Browser"
+/* BROWSER */
+);
+
+},{"@firebase/app":5,"@firebase/component":9,"@firebase/logger":12,"@firebase/util":15,"tslib":353}],8:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.addFrameworkForLogging = addFrameworkForLogging;
+Object.defineProperty(exports, "ActionCodeOperation", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.A;
+  }
+});
+Object.defineProperty(exports, "ActionCodeURL", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.ac;
+  }
+});
+Object.defineProperty(exports, "AuthCredential", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.G;
+  }
+});
+Object.defineProperty(exports, "AuthErrorCodes", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.C;
+  }
+});
+Object.defineProperty(exports, "AuthImpl", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.aE;
+  }
+});
+Object.defineProperty(exports, "AuthPopup", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.aH;
+  }
+});
+Object.defineProperty(exports, "EmailAuthCredential", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.H;
+  }
+});
+Object.defineProperty(exports, "EmailAuthProvider", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.L;
+  }
+});
+Object.defineProperty(exports, "FacebookAuthProvider", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.M;
+  }
+});
+Object.defineProperty(exports, "FactorId", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.F;
+  }
+});
+Object.defineProperty(exports, "FetchProvider", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.aI;
+  }
+});
+Object.defineProperty(exports, "GithubAuthProvider", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.Q;
+  }
+});
+Object.defineProperty(exports, "GoogleAuthProvider", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.N;
+  }
+});
+Object.defineProperty(exports, "OAuthCredential", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.I;
+  }
+});
+Object.defineProperty(exports, "OAuthProvider", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.T;
+  }
+});
+Object.defineProperty(exports, "OperationType", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.O;
+  }
+});
+Object.defineProperty(exports, "PhoneAuthCredential", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.J;
+  }
+});
+Object.defineProperty(exports, "PhoneAuthProvider", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.P;
+  }
+});
+Object.defineProperty(exports, "PhoneMultiFactorGenerator", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.m;
+  }
+});
+Object.defineProperty(exports, "ProviderId", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.o;
+  }
+});
+Object.defineProperty(exports, "RecaptchaVerifier", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.R;
+  }
+});
+Object.defineProperty(exports, "SAMLAuthCredential", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.aJ;
+  }
+});
+Object.defineProperty(exports, "SAMLAuthProvider", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.U;
+  }
+});
+Object.defineProperty(exports, "SignInMethod", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.S;
+  }
+});
+Object.defineProperty(exports, "TwitterAuthProvider", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.V;
+  }
+});
+Object.defineProperty(exports, "UserImpl", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.aD;
+  }
+});
+Object.defineProperty(exports, "_assert", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.aw;
+  }
+});
+Object.defineProperty(exports, "_castAuth", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.aC;
+  }
+});
+Object.defineProperty(exports, "_fail", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.as;
+  }
+});
+Object.defineProperty(exports, "_generateEventId", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.aG;
+  }
+});
+Object.defineProperty(exports, "_getClientVersion", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.aF;
+  }
+});
+Object.defineProperty(exports, "_getInstance", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.ax;
+  }
+});
+Object.defineProperty(exports, "_getRedirectResult", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.aA;
+  }
+});
+Object.defineProperty(exports, "_persistenceKeyName", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.ay;
+  }
+});
+Object.defineProperty(exports, "applyActionCode", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.a1;
+  }
+});
+Object.defineProperty(exports, "browserLocalPersistence", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.b;
+  }
+});
+Object.defineProperty(exports, "browserPopupRedirectResolver", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.k;
+  }
+});
+Object.defineProperty(exports, "browserSessionPersistence", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.a;
+  }
+});
+Object.defineProperty(exports, "checkActionCode", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.a2;
+  }
+});
+Object.defineProperty(exports, "confirmPasswordReset", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.a0;
+  }
+});
+Object.defineProperty(exports, "connectAuthEmulator", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.E;
+  }
+});
+Object.defineProperty(exports, "createUserWithEmailAndPassword", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.a4;
+  }
+});
+Object.defineProperty(exports, "debugErrorMap", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.z;
+  }
+});
+Object.defineProperty(exports, "deleteUser", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.y;
+  }
+});
+Object.defineProperty(exports, "fetchSignInMethodsForEmail", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.a9;
+  }
+});
+Object.defineProperty(exports, "getAdditionalUserInfo", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.ak;
+  }
+});
+Object.defineProperty(exports, "getAuth", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.n;
+  }
+});
+Object.defineProperty(exports, "getIdToken", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.ah;
+  }
+});
+Object.defineProperty(exports, "getIdTokenResult", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.ai;
+  }
+});
+Object.defineProperty(exports, "getMultiFactorResolver", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.am;
+  }
+});
+Object.defineProperty(exports, "getRedirectResult", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.j;
+  }
+});
+Object.defineProperty(exports, "inMemoryPersistence", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.K;
+  }
+});
+Object.defineProperty(exports, "indexedDBLocalPersistence", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.i;
+  }
+});
+Object.defineProperty(exports, "initializeAuth", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.D;
+  }
+});
+Object.defineProperty(exports, "isSignInWithEmailLink", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.a7;
+  }
+});
+Object.defineProperty(exports, "linkWithCredential", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.Y;
+  }
+});
+Object.defineProperty(exports, "linkWithPhoneNumber", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.l;
+  }
+});
+Object.defineProperty(exports, "linkWithPopup", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.d;
+  }
+});
+Object.defineProperty(exports, "linkWithRedirect", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.g;
+  }
+});
+Object.defineProperty(exports, "multiFactor", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.an;
+  }
+});
+Object.defineProperty(exports, "onAuthStateChanged", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.t;
+  }
+});
+Object.defineProperty(exports, "onIdTokenChanged", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.q;
+  }
+});
+Object.defineProperty(exports, "parseActionCodeURL", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.ad;
+  }
+});
+Object.defineProperty(exports, "prodErrorMap", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.B;
+  }
+});
+Object.defineProperty(exports, "reauthenticateWithCredential", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.Z;
+  }
+});
+Object.defineProperty(exports, "reauthenticateWithPhoneNumber", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.r;
+  }
+});
+Object.defineProperty(exports, "reauthenticateWithPopup", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.e;
+  }
+});
+Object.defineProperty(exports, "reauthenticateWithRedirect", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.h;
+  }
+});
+Object.defineProperty(exports, "reload", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.al;
+  }
+});
+Object.defineProperty(exports, "sendEmailVerification", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.aa;
+  }
+});
+Object.defineProperty(exports, "sendPasswordResetEmail", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.$;
+  }
+});
+Object.defineProperty(exports, "sendSignInLinkToEmail", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.a6;
+  }
+});
+Object.defineProperty(exports, "setPersistence", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.p;
+  }
+});
+Object.defineProperty(exports, "signInAnonymously", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.W;
+  }
+});
+Object.defineProperty(exports, "signInWithCredential", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.X;
+  }
+});
+Object.defineProperty(exports, "signInWithCustomToken", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b._;
+  }
+});
+Object.defineProperty(exports, "signInWithEmailAndPassword", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.a5;
+  }
+});
+Object.defineProperty(exports, "signInWithEmailLink", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.a8;
+  }
+});
+Object.defineProperty(exports, "signInWithPhoneNumber", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.s;
+  }
+});
+Object.defineProperty(exports, "signInWithPopup", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.c;
+  }
+});
+Object.defineProperty(exports, "signInWithRedirect", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.f;
+  }
+});
+Object.defineProperty(exports, "signOut", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.x;
+  }
+});
+Object.defineProperty(exports, "unlink", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.aj;
+  }
+});
+Object.defineProperty(exports, "updateCurrentUser", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.w;
+  }
+});
+Object.defineProperty(exports, "updateEmail", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.af;
+  }
+});
+Object.defineProperty(exports, "updatePassword", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.ag;
+  }
+});
+Object.defineProperty(exports, "updatePhoneNumber", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.u;
+  }
+});
+Object.defineProperty(exports, "updateProfile", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.ae;
+  }
+});
+Object.defineProperty(exports, "useDeviceLanguage", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.v;
+  }
+});
+Object.defineProperty(exports, "verifyBeforeUpdateEmail", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.ab;
+  }
+});
+Object.defineProperty(exports, "verifyPasswordResetCode", {
+  enumerable: true,
+  get: function () {
+    return _index8fbd02b.a3;
+  }
+});
+exports.cordovaPopupRedirectResolver = void 0;
+
+var _index8fbd02b = require("./index-8fbd02b6.js");
+
+var _util = require("@firebase/util");
+
+require("@firebase/app");
+
+require("tslib");
+
+require("@firebase/logger");
+
+require("@firebase/component");
+
+/**
+ * @license
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+function _cordovaWindow() {
+  return window;
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * How long to wait after the app comes back into focus before concluding that
+ * the user closed the sign in tab.
+ */
+
+
+const REDIRECT_TIMEOUT_MS = 2000;
+/**
+ * Generates the URL for the OAuth handler.
+ */
+
+async function _generateHandlerUrl(auth, event, provider) {
+  var _a; // Get the cordova plugins
+
+
+  const {
+    BuildInfo
+  } = _cordovaWindow();
+
+  (0, _index8fbd02b.ap)(event.sessionId, 'AuthEvent did not contain a session ID');
+  const sessionDigest = await computeSha256(event.sessionId);
+  const additionalParams = {};
+
+  if ((0, _index8fbd02b.aq)()) {
+    // iOS app identifier
+    additionalParams['ibi'] = BuildInfo.packageName;
+  } else if ((0, _index8fbd02b.ar)()) {
+    // Android app identifier
+    additionalParams['apn'] = BuildInfo.packageName;
+  } else {
+    (0, _index8fbd02b.as)(auth, "operation-not-supported-in-this-environment"
+    /* OPERATION_NOT_SUPPORTED */
+    );
+  } // Add the display name if available
+
+
+  if (BuildInfo.displayName) {
+    additionalParams['appDisplayName'] = BuildInfo.displayName;
+  } // Attached the hashed session ID
+
+
+  additionalParams['sessionId'] = sessionDigest;
+  return (0, _index8fbd02b.at)(auth, provider, event.type, undefined, (_a = event.eventId) !== null && _a !== void 0 ? _a : undefined, additionalParams);
+}
+/**
+ * Validates that this app is valid for this project configuration
+ */
+
+
+async function _validateOrigin(auth) {
+  const {
+    BuildInfo
+  } = _cordovaWindow();
+
+  const request = {};
+
+  if ((0, _index8fbd02b.aq)()) {
+    request.iosBundleId = BuildInfo.packageName;
+  } else if ((0, _index8fbd02b.ar)()) {
+    request.androidPackageName = BuildInfo.packageName;
+  } else {
+    (0, _index8fbd02b.as)(auth, "operation-not-supported-in-this-environment"
+    /* OPERATION_NOT_SUPPORTED */
+    );
+  } // Will fail automatically if package name is not authorized
+
+
+  await (0, _index8fbd02b.au)(auth, request);
+}
+
+function _performRedirect(handlerUrl) {
+  // Get the cordova plugins
+  const {
+    cordova
+  } = _cordovaWindow();
+
+  return new Promise(resolve => {
+    cordova.plugins.browsertab.isAvailable(browserTabIsAvailable => {
+      let iabRef = null;
+
+      if (browserTabIsAvailable) {
+        cordova.plugins.browsertab.openUrl(handlerUrl);
+      } else {
+        // TODO: Return the inappbrowser ref that's returned from the open call
+        iabRef = cordova.InAppBrowser.open(handlerUrl, (0, _index8fbd02b.ao)() ? '_blank' : '_system', 'location=yes');
+      }
+
+      resolve(iabRef);
+    });
+  });
+}
+/**
+ * This function waits for app activity to be seen before resolving. It does
+ * this by attaching listeners to various dom events. Once the app is determined
+ * to be visible, this promise resolves. AFTER that resolution, the listeners
+ * are detached and any browser tabs left open will be closed.
+ */
+
+
+async function _waitForAppResume(auth, eventListener, iabRef) {
+  // Get the cordova plugins
+  const {
+    cordova
+  } = _cordovaWindow();
+
+  let cleanup = () => {};
+
+  try {
+    await new Promise((resolve, reject) => {
+      let onCloseTimer = null; // DEFINE ALL THE CALLBACKS =====
+
+      function authEventSeen() {
+        var _a; // Auth event was detected. Resolve this promise and close the extra
+        // window if it's still open.
+
+
+        resolve();
+        const closeBrowserTab = (_a = cordova.plugins.browsertab) === null || _a === void 0 ? void 0 : _a.close;
+
+        if (typeof closeBrowserTab === 'function') {
+          closeBrowserTab();
+        } // Close inappbrowser emebedded webview in iOS7 and 8 case if still
+        // open.
+
+
+        if (typeof (iabRef === null || iabRef === void 0 ? void 0 : iabRef.close) === 'function') {
+          iabRef.close();
+        }
+      }
+
+      function resumed() {
+        if (onCloseTimer) {
+          // This code already ran; do not rerun.
+          return;
+        }
+
+        onCloseTimer = window.setTimeout(() => {
+          // Wait two seeconds after resume then reject.
+          reject((0, _index8fbd02b.av)(auth, "redirect-cancelled-by-user"
+          /* REDIRECT_CANCELLED_BY_USER */
+          ));
+        }, REDIRECT_TIMEOUT_MS);
+      }
+
+      function visibilityChanged() {
+        if ((document === null || document === void 0 ? void 0 : document.visibilityState) === 'visible') {
+          resumed();
+        }
+      } // ATTACH ALL THE LISTENERS =====
+      // Listen for the auth event
+
+
+      eventListener.addPassiveListener(authEventSeen); // Listen for resume and visibility events
+
+      document.addEventListener('resume', resumed, false);
+
+      if ((0, _index8fbd02b.ar)()) {
+        document.addEventListener('visibilitychange', visibilityChanged, false);
+      } // SETUP THE CLEANUP FUNCTION =====
+
+
+      cleanup = () => {
+        eventListener.removePassiveListener(authEventSeen);
+        document.removeEventListener('resume', resumed, false);
+        document.removeEventListener('visibilitychange', visibilityChanged, false);
+
+        if (onCloseTimer) {
+          window.clearTimeout(onCloseTimer);
+        }
+      };
+    });
+  } finally {
+    cleanup();
+  }
+}
+/**
+ * Checks the configuration of the Cordova environment. This has no side effect
+ * if the configuration is correct; otherwise it throws an error with the
+ * missing plugin.
+ */
+
+
+function _checkCordovaConfiguration(auth) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+
+  const win = _cordovaWindow(); // Check all dependencies installed.
+  // https://github.com/nordnet/cordova-universal-links-plugin
+  // Note that cordova-universal-links-plugin has been abandoned.
+  // A fork with latest fixes is available at:
+  // https://www.npmjs.com/package/cordova-universal-links-plugin-fix
+
+
+  (0, _index8fbd02b.aw)(typeof ((_a = win === null || win === void 0 ? void 0 : win.universalLinks) === null || _a === void 0 ? void 0 : _a.subscribe) === 'function', auth, "invalid-cordova-configuration"
+  /* INVALID_CORDOVA_CONFIGURATION */
+  , {
+    missingPlugin: 'cordova-universal-links-plugin-fix'
+  }); // https://www.npmjs.com/package/cordova-plugin-buildinfo
+
+  (0, _index8fbd02b.aw)(typeof ((_b = win === null || win === void 0 ? void 0 : win.BuildInfo) === null || _b === void 0 ? void 0 : _b.packageName) !== 'undefined', auth, "invalid-cordova-configuration"
+  /* INVALID_CORDOVA_CONFIGURATION */
+  , {
+    missingPlugin: 'cordova-plugin-buildInfo'
+  }); // https://github.com/google/cordova-plugin-browsertab
+
+  (0, _index8fbd02b.aw)(typeof ((_e = (_d = (_c = win === null || win === void 0 ? void 0 : win.cordova) === null || _c === void 0 ? void 0 : _c.plugins) === null || _d === void 0 ? void 0 : _d.browsertab) === null || _e === void 0 ? void 0 : _e.openUrl) === 'function', auth, "invalid-cordova-configuration"
+  /* INVALID_CORDOVA_CONFIGURATION */
+  , {
+    missingPlugin: 'cordova-plugin-browsertab'
+  });
+  (0, _index8fbd02b.aw)(typeof ((_h = (_g = (_f = win === null || win === void 0 ? void 0 : win.cordova) === null || _f === void 0 ? void 0 : _f.plugins) === null || _g === void 0 ? void 0 : _g.browsertab) === null || _h === void 0 ? void 0 : _h.isAvailable) === 'function', auth, "invalid-cordova-configuration"
+  /* INVALID_CORDOVA_CONFIGURATION */
+  , {
+    missingPlugin: 'cordova-plugin-browsertab'
+  }); // https://cordova.apache.org/docs/en/latest/reference/cordova-plugin-inappbrowser/
+
+  (0, _index8fbd02b.aw)(typeof ((_k = (_j = win === null || win === void 0 ? void 0 : win.cordova) === null || _j === void 0 ? void 0 : _j.InAppBrowser) === null || _k === void 0 ? void 0 : _k.open) === 'function', auth, "invalid-cordova-configuration"
+  /* INVALID_CORDOVA_CONFIGURATION */
+  , {
+    missingPlugin: 'cordova-plugin-inappbrowser'
+  });
+}
+/**
+ * Computes the SHA-256 of a session ID. The SubtleCrypto interface is only
+ * available in "secure" contexts, which covers Cordova (which is served on a file
+ * protocol).
+ */
+
+
+async function computeSha256(sessionId) {
+  const bytes = stringToArrayBuffer(sessionId); // TODO: For IE11 crypto has a different name and this operation comes back
+  //       as an object, not a promise. This is the old proposed standard that
+  //       is used by IE11:
+  // https://www.w3.org/TR/2013/WD-WebCryptoAPI-20130108/#cryptooperation-interface
+
+  const buf = await crypto.subtle.digest('SHA-256', bytes);
+  const arr = Array.from(new Uint8Array(buf));
+  return arr.map(num => num.toString(16).padStart(2, '0')).join('');
+}
+
+function stringToArrayBuffer(str) {
+  // This function is only meant to deal with an ASCII charset and makes
+  // certain simplifying assumptions.
+  (0, _index8fbd02b.ap)(/[0-9a-zA-Z]+/.test(str), 'Can only convert alpha-numeric strings');
+
+  if (typeof TextEncoder !== 'undefined') {
+    return new TextEncoder().encode(str);
+  }
+
+  const buff = new ArrayBuffer(str.length);
+  const view = new Uint8Array(buff);
+
+  for (let i = 0; i < str.length; i++) {
+    view[i] = str.charCodeAt(i);
+  }
+
+  return view;
+}
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+const SESSION_ID_LENGTH = 20;
+/** Custom AuthEventManager that adds passive listeners to events */
+
+class CordovaAuthEventManager extends _index8fbd02b.az {
+  constructor() {
+    super(...arguments);
+    this.passiveListeners = new Set();
+    this.initPromise = new Promise(resolve => {
+      this.resolveInialized = resolve;
+    });
+  }
+
+  addPassiveListener(cb) {
+    this.passiveListeners.add(cb);
+  }
+
+  removePassiveListener(cb) {
+    this.passiveListeners.delete(cb);
+  } // In a Cordova environment, this manager can live through multiple redirect
+  // operations
+
+
+  resetRedirect() {
+    this.queuedRedirectEvent = null;
+    this.hasHandledPotentialRedirect = false;
+  }
+  /** Override the onEvent method */
+
+
+  onEvent(event) {
+    this.resolveInialized();
+    this.passiveListeners.forEach(cb => cb(event));
+    return super.onEvent(event);
+  }
+
+  async initialized() {
+    await this.initPromise;
+  }
+
+}
+/**
+ * Generates a (partial) {@link AuthEvent}.
+ */
+
+
+function _generateNewEvent(auth, type, eventId = null) {
+  return {
+    type,
+    eventId,
+    urlResponse: null,
+    sessionId: generateSessionId(),
+    postBody: null,
+    tenantId: auth.tenantId,
+    error: (0, _index8fbd02b.av)(auth, "no-auth-event"
+    /* NO_AUTH_EVENT */
+    )
+  };
+}
+
+function _savePartialEvent(auth, event) {
+  return storage()._set(persistenceKey(auth), event);
+}
+
+async function _getAndRemoveEvent(auth) {
+  const event = await storage()._get(persistenceKey(auth));
+
+  if (event) {
+    await storage()._remove(persistenceKey(auth));
+  }
+
+  return event;
+}
+
+function _eventFromPartialAndUrl(partialEvent, url) {
+  var _a, _b; // Parse the deep link within the dynamic link URL.
+
+
+  const callbackUrl = _getDeepLinkFromCallback(url); // Confirm it is actually a callback URL.
+  // Currently the universal link will be of this format:
+  // https://<AUTH_DOMAIN>/__/auth/callback<OAUTH_RESPONSE>
+  // This is a fake URL but is not intended to take the user anywhere
+  // and just redirect to the app.
+
+
+  if (callbackUrl.includes('/__/auth/callback')) {
+    // Check if there is an error in the URL.
+    // This mechanism is also used to pass errors back to the app:
+    // https://<AUTH_DOMAIN>/__/auth/callback?firebaseError=<STRINGIFIED_ERROR>
+    const params = searchParamsOrEmpty(callbackUrl); // Get the error object corresponding to the stringified error if found.
+
+    const errorObject = params['firebaseError'] ? parseJsonOrNull(decodeURIComponent(params['firebaseError'])) : null;
+    const code = (_b = (_a = errorObject === null || errorObject === void 0 ? void 0 : errorObject['code']) === null || _a === void 0 ? void 0 : _a.split('auth/')) === null || _b === void 0 ? void 0 : _b[1];
+    const error = code ? (0, _index8fbd02b.av)(code) : null;
+
+    if (error) {
+      return {
+        type: partialEvent.type,
+        eventId: partialEvent.eventId,
+        tenantId: partialEvent.tenantId,
+        error,
+        urlResponse: null,
+        sessionId: null,
+        postBody: null
+      };
+    } else {
+      return {
+        type: partialEvent.type,
+        eventId: partialEvent.eventId,
+        tenantId: partialEvent.tenantId,
+        sessionId: partialEvent.sessionId,
+        urlResponse: callbackUrl,
+        postBody: null
+      };
+    }
+  }
+
+  return null;
+}
+
+function generateSessionId() {
+  const chars = [];
+  const allowedChars = '1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+  for (let i = 0; i < SESSION_ID_LENGTH; i++) {
+    const idx = Math.floor(Math.random() * allowedChars.length);
+    chars.push(allowedChars.charAt(idx));
+  }
+
+  return chars.join('');
+}
+
+function storage() {
+  return (0, _index8fbd02b.ax)(_index8fbd02b.b);
+}
+
+function persistenceKey(auth) {
+  return (0, _index8fbd02b.ay)("authEvent"
+  /* AUTH_EVENT */
+  , auth.config.apiKey, auth.name);
+}
+
+function parseJsonOrNull(json) {
+  try {
+    return JSON.parse(json);
+  } catch (e) {
+    return null;
+  }
+} // Exported for testing
+
+
+function _getDeepLinkFromCallback(url) {
+  const params = searchParamsOrEmpty(url);
+  const link = params['link'] ? decodeURIComponent(params['link']) : undefined; // Double link case (automatic redirect)
+
+  const doubleDeepLink = searchParamsOrEmpty(link)['link']; // iOS custom scheme links.
+
+  const iOSDeepLink = params['deep_link_id'] ? decodeURIComponent(params['deep_link_id']) : undefined;
+  const iOSDoubleDeepLink = searchParamsOrEmpty(iOSDeepLink)['link'];
+  return iOSDoubleDeepLink || iOSDeepLink || doubleDeepLink || link || url;
+}
+/**
+ * Optimistically tries to get search params from a string, or else returns an
+ * empty search params object.
+ */
+
+
+function searchParamsOrEmpty(url) {
+  if (!(url === null || url === void 0 ? void 0 : url.includes('?'))) {
+    return {};
+  }
+
+  const [_, ...rest] = url.split('?');
+  return (0, _util.querystringDecode)(rest.join('?'));
+}
+/**
+ * @license
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * How long to wait for the initial auth event before concluding no
+ * redirect pending
+ */
+
+
+const INITIAL_EVENT_TIMEOUT_MS = 500;
+
+class CordovaPopupRedirectResolver {
+  constructor() {
+    this._redirectPersistence = _index8fbd02b.a;
+    this._shouldInitProactively = true; // This is lightweight for Cordova
+
+    this.eventManagers = new Map();
+    this.originValidationPromises = {};
+    this._completeRedirectFn = _index8fbd02b.aA;
+  }
+
+  async _initialize(auth) {
+    const key = auth._key();
+
+    let manager = this.eventManagers.get(key);
+
+    if (!manager) {
+      manager = new CordovaAuthEventManager(auth);
+      this.eventManagers.set(key, manager);
+      this.attachCallbackListeners(auth, manager);
+    }
+
+    return manager;
+  }
+
+  _openPopup(auth) {
+    (0, _index8fbd02b.as)(auth, "operation-not-supported-in-this-environment"
+    /* OPERATION_NOT_SUPPORTED */
+    );
+  }
+
+  async _openRedirect(auth, provider, authType, eventId) {
+    _checkCordovaConfiguration(auth);
+
+    const manager = await this._initialize(auth);
+    await manager.initialized(); // Reset the persisted redirect states. This does not matter on Web where
+    // the redirect always blows away application state entirely. On Cordova,
+    // the app maintains control flow through the redirect.
+
+    manager.resetRedirect();
+    (0, _index8fbd02b.aB)();
+    await this._originValidation(auth);
+
+    const event = _generateNewEvent(auth, authType, eventId);
+
+    await _savePartialEvent(auth, event);
+    const url = await _generateHandlerUrl(auth, event, provider);
+    const iabRef = await _performRedirect(url);
+    return _waitForAppResume(auth, manager, iabRef);
+  }
+
+  _isIframeWebStorageSupported(_auth, _cb) {
+    throw new Error('Method not implemented.');
+  }
+
+  _originValidation(auth) {
+    const key = auth._key();
+
+    if (!this.originValidationPromises[key]) {
+      this.originValidationPromises[key] = _validateOrigin(auth);
+    }
+
+    return this.originValidationPromises[key];
+  }
+
+  attachCallbackListeners(auth, manager) {
+    // Get the global plugins
+    const {
+      universalLinks,
+      handleOpenURL,
+      BuildInfo
+    } = _cordovaWindow();
+
+    const noEventTimeout = setTimeout(async () => {
+      // We didn't see that initial event. Clear any pending object and
+      // dispatch no event
+      await _getAndRemoveEvent(auth);
+      manager.onEvent(generateNoEvent());
+    }, INITIAL_EVENT_TIMEOUT_MS);
+
+    const universalLinksCb = async eventData => {
+      // We have an event so we can clear the no event timeout
+      clearTimeout(noEventTimeout);
+      const partialEvent = await _getAndRemoveEvent(auth);
+      let finalEvent = null;
+
+      if (partialEvent && (eventData === null || eventData === void 0 ? void 0 : eventData['url'])) {
+        finalEvent = _eventFromPartialAndUrl(partialEvent, eventData['url']);
+      } // If finalEvent is never filled, trigger with no event
+
+
+      manager.onEvent(finalEvent || generateNoEvent());
+    }; // Universal links subscriber doesn't exist for iOS, so we need to check
+
+
+    if (typeof universalLinks !== 'undefined' && typeof universalLinks.subscribe === 'function') {
+      universalLinks.subscribe(null, universalLinksCb);
+    } // iOS 7 or 8 custom URL schemes.
+    // This is also the current default behavior for iOS 9+.
+    // For this to work, cordova-plugin-customurlscheme needs to be installed.
+    // https://github.com/EddyVerbruggen/Custom-URL-scheme
+    // Do not overwrite the existing developer's URL handler.
+
+
+    const existingHandleOpenURL = handleOpenURL;
+    const packagePrefix = `${BuildInfo.packageName.toLowerCase()}://`;
+
+    _cordovaWindow().handleOpenURL = async url => {
+      if (url.toLowerCase().startsWith(packagePrefix)) {
+        // We want this intentionally to float
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        universalLinksCb({
+          url
+        });
+      } // Call the developer's handler if it is present.
+
+
+      if (typeof existingHandleOpenURL === 'function') {
+        try {
+          existingHandleOpenURL(url);
+        } catch (e) {
+          // This is a developer error. Don't stop the flow of the SDK.
+          console.error(e);
+        }
+      }
+    };
+  }
+
+}
+/**
+ * An implementation of {@link PopupRedirectResolver} suitable for Cordova
+ * based applications.
+ *
+ * @public
+ */
+
+
+const cordovaPopupRedirectResolver = CordovaPopupRedirectResolver;
+exports.cordovaPopupRedirectResolver = cordovaPopupRedirectResolver;
+
+function generateNoEvent() {
+  return {
+    type: "unknown"
+    /* UNKNOWN */
+    ,
+    eventId: null,
+    sessionId: null,
+    urlResponse: null,
+    postBody: null,
+    tenantId: null,
+    error: (0, _index8fbd02b.av)("no-auth-event"
+    /* NO_AUTH_EVENT */
+    )
+  };
+}
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+// This function should only be called by frameworks (e.g. FirebaseUI-web) to log their usage.
+// It is not intended for direct use by developer apps. NO jsdoc here to intentionally leave it out
+// of autogenerated documentation pages to reduce accidental misuse.
+
+
+function addFrameworkForLogging(auth, framework) {
+  (0, _index8fbd02b.aC)(auth)._logFramework(framework);
+}
+
+},{"./index-8fbd02b6.js":7,"@firebase/app":5,"@firebase/component":9,"@firebase/logger":12,"@firebase/util":15,"tslib":353}],9:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1962,7 +16882,7 @@ var ComponentContainer = function () {
 
 exports.ComponentContainer = ComponentContainer;
 
-},{"@firebase/util":11,"tslib":348}],6:[function(require,module,exports){
+},{"@firebase/util":15,"tslib":353}],10:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -3132,7 +18052,7 @@ function registerFirestore(instance) {
 
 registerFirestore(_appCompat.default);
 
-},{"@firebase/app-compat":3,"@firebase/component":5,"@firebase/firestore":7,"@firebase/util":11}],7:[function(require,module,exports){
+},{"@firebase/app-compat":4,"@firebase/component":9,"@firebase/firestore":11,"@firebase/util":15}],11:[function(require,module,exports){
 (function (process){(function (){
 "use strict";Object.defineProperty(exports,"__esModule",{value:true});exports._cast=_c;exports._debugAssert=L;exports._isBase64Available=ft;exports._logWarn=$;exports._validateIsNotUsedTogether=lc;exports.addDoc=_h;exports.arrayRemove=bh;exports.arrayUnion=Rh;exports.clearIndexedDbPersistence=Bc;exports.collection=Ac;exports.collectionGroup=Rc;exports.connectFirestoreEmulator=pc;exports.deleteDoc=wh;exports.deleteField=Ih;exports.disableNetwork=Kc;exports.doc=bc;exports.documentId=Hc;exports.enableIndexedDbPersistence=Fc;exports.enableMultiTabIndexedDbPersistence=Mc;exports.enableNetwork=qc;exports.endAt=Hu;exports.endBefore=zu;exports.ensureFirestoreConfigured=$c;exports.executeWrite=yh;exports.getDoc=rh;exports.getDocFromCache=ah;exports.getDocFromServer=ch;exports.getDocs=uh;exports.getDocsFromCache=hh;exports.getDocsFromServer=lh;exports.getFirestore=kc;exports.increment=Ph;exports.initializeFirestore=xc;exports.limit=qu;exports.limitToLast=Ku;exports.loadBundle=Qc;exports.namedQuery=Wc;exports.onSnapshot=mh;exports.onSnapshotsInSync=gh;exports.orderBy=Bu;exports.query=Ou;exports.queryEqual=vc;exports.refEqual=Pc;exports.runTransaction=Th;exports.serverTimestamp=Ah;exports.setDoc=fh;exports.setLogLevel=N;exports.snapshotEqual=xu;exports.startAfter=Wu;exports.startAt=Qu;exports.terminate=jc;exports.updateDoc=dh;exports.waitForPendingWrites=Uc;exports.where=Mu;exports.writeBatch=vh;exports._FieldPath=exports._EmptyCredentialsProvider=exports._DocumentKey=exports._DatabaseId=exports.WriteBatch=exports.Transaction=exports.Timestamp=exports.SnapshotMetadata=exports.QuerySnapshot=exports.QueryDocumentSnapshot=exports.QueryConstraint=exports.Query=exports.LoadBundleTask=exports.GeoPoint=exports.FirestoreError=exports.Firestore=exports.FieldValue=exports.FieldPath=exports.DocumentSnapshot=exports.DocumentReference=exports.CollectionReference=exports.CACHE_SIZE_UNLIMITED=exports.Bytes=exports.AbstractUserDataWriter=void 0;var _app=require("@firebase/app");var _component=require("@firebase/component");var _logger=require("@firebase/logger");var _util=require("@firebase/util");var _webchannelWrapper=require("@firebase/webchannel-wrapper");/**
  * @license
@@ -10162,7 +25082,7 @@ return new lu("arrayRemove",t);}/**
  */var Vh;!function(t){S=t;}(_app.SDK_VERSION),(0,_app._registerComponent)(new _component.Component("firestore",(t,{options:e})=>{const n=t.getProvider("app").getImmediate(),s=new Nc(n,new G(t.getProvider("auth-internal")));return e=Object.assign({useFetchStreams:!0},e),s._setSettings(e),s;},"PUBLIC"/* PUBLIC */)),(0,_app.registerVersion)("@firebase/firestore","3.0.2",Vh);
 
 }).call(this)}).call(this,require('_process'))
-},{"@firebase/app":4,"@firebase/component":5,"@firebase/logger":8,"@firebase/util":11,"@firebase/webchannel-wrapper":12,"_process":347}],8:[function(require,module,exports){
+},{"@firebase/app":5,"@firebase/component":9,"@firebase/logger":12,"@firebase/util":15,"@firebase/webchannel-wrapper":16,"_process":352}],12:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -10497,7 +25417,7 @@ function setUserLogHandler(logCallback, options) {
   }
 }
 
-},{}],9:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -10974,7 +25894,7 @@ function registerStorage(instance) {
 
 registerStorage(_appCompat.default);
 
-},{"@firebase/app-compat":3,"@firebase/component":5,"@firebase/storage":10}],10:[function(require,module,exports){
+},{"@firebase/app-compat":4,"@firebase/component":9,"@firebase/storage":14}],14:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -15093,7 +30013,7 @@ function registerStorage() {
 
 registerStorage();
 
-},{"@firebase/app":4,"@firebase/component":5,"@firebase/util":11}],11:[function(require,module,exports){
+},{"@firebase/app":5,"@firebase/component":9,"@firebase/util":15}],15:[function(require,module,exports){
 (function (global){(function (){
 "use strict";
 
@@ -17284,7 +32204,7 @@ function getModularInstance(service) {
 }
 
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"tslib":348}],12:[function(require,module,exports){
+},{"tslib":353}],16:[function(require,module,exports){
 (function (global){(function (){
 "use strict";
 
@@ -20212,7 +35132,7 @@ var _default = esm;
 exports.default = _default;
 
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],13:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 (function (global){(function (){
 "use strict";
 
@@ -20243,7 +35163,7 @@ define(String.prototype, "padRight", "".padEnd);
   [][key] && define(Array, key, Function.call.bind([][key]));
 });
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"core-js/fn/regexp/escape":15,"core-js/shim":343,"regenerator-runtime/runtime":14}],14:[function(require,module,exports){
+},{"core-js/fn/regexp/escape":19,"core-js/shim":347,"regenerator-runtime/runtime":18}],18:[function(require,module,exports){
 (function (global){(function (){
 /**
  * Copyright (c) 2014, Facebook, Inc.
@@ -20983,24 +35903,24 @@ define(String.prototype, "padRight", "".padEnd);
 );
 
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],15:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 require('../../modules/core.regexp.escape');
 module.exports = require('../../modules/_core').RegExp.escape;
 
-},{"../../modules/_core":37,"../../modules/core.regexp.escape":145}],16:[function(require,module,exports){
+},{"../../modules/_core":41,"../../modules/core.regexp.escape":149}],20:[function(require,module,exports){
 module.exports = function (it) {
   if (typeof it != 'function') throw TypeError(it + ' is not a function!');
   return it;
 };
 
-},{}],17:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 var cof = require('./_cof');
 module.exports = function (it, msg) {
   if (typeof it != 'number' && cof(it) != 'Number') throw TypeError(msg);
   return +it;
 };
 
-},{"./_cof":32}],18:[function(require,module,exports){
+},{"./_cof":36}],22:[function(require,module,exports){
 // 22.1.3.31 Array.prototype[@@unscopables]
 var UNSCOPABLES = require('./_wks')('unscopables');
 var ArrayProto = Array.prototype;
@@ -21009,7 +35929,7 @@ module.exports = function (key) {
   ArrayProto[UNSCOPABLES][key] = true;
 };
 
-},{"./_hide":57,"./_wks":143}],19:[function(require,module,exports){
+},{"./_hide":61,"./_wks":147}],23:[function(require,module,exports){
 'use strict';
 var at = require('./_string-at')(true);
 
@@ -21019,21 +35939,21 @@ module.exports = function (S, index, unicode) {
   return index + (unicode ? at(S, index).length : 1);
 };
 
-},{"./_string-at":120}],20:[function(require,module,exports){
+},{"./_string-at":124}],24:[function(require,module,exports){
 module.exports = function (it, Constructor, name, forbiddenField) {
   if (!(it instanceof Constructor) || (forbiddenField !== undefined && forbiddenField in it)) {
     throw TypeError(name + ': incorrect invocation!');
   } return it;
 };
 
-},{}],21:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 var isObject = require('./_is-object');
 module.exports = function (it) {
   if (!isObject(it)) throw TypeError(it + ' is not an object!');
   return it;
 };
 
-},{"./_is-object":66}],22:[function(require,module,exports){
+},{"./_is-object":70}],26:[function(require,module,exports){
 // 22.1.3.3 Array.prototype.copyWithin(target, start, end = this.length)
 'use strict';
 var toObject = require('./_to-object');
@@ -21061,7 +35981,7 @@ module.exports = [].copyWithin || function copyWithin(target /* = 0 */, start /*
   } return O;
 };
 
-},{"./_to-absolute-index":128,"./_to-length":132,"./_to-object":133}],23:[function(require,module,exports){
+},{"./_to-absolute-index":132,"./_to-length":136,"./_to-object":137}],27:[function(require,module,exports){
 // 22.1.3.6 Array.prototype.fill(value, start = 0, end = this.length)
 'use strict';
 var toObject = require('./_to-object');
@@ -21078,7 +35998,7 @@ module.exports = function fill(value /* , start = 0, end = @length */) {
   return O;
 };
 
-},{"./_to-absolute-index":128,"./_to-length":132,"./_to-object":133}],24:[function(require,module,exports){
+},{"./_to-absolute-index":132,"./_to-length":136,"./_to-object":137}],28:[function(require,module,exports){
 var forOf = require('./_for-of');
 
 module.exports = function (iter, ITERATOR) {
@@ -21087,7 +36007,7 @@ module.exports = function (iter, ITERATOR) {
   return result;
 };
 
-},{"./_for-of":53}],25:[function(require,module,exports){
+},{"./_for-of":57}],29:[function(require,module,exports){
 // false -> Array#indexOf
 // true  -> Array#includes
 var toIObject = require('./_to-iobject');
@@ -21112,7 +36032,7 @@ module.exports = function (IS_INCLUDES) {
   };
 };
 
-},{"./_to-absolute-index":128,"./_to-iobject":131,"./_to-length":132}],26:[function(require,module,exports){
+},{"./_to-absolute-index":132,"./_to-iobject":135,"./_to-length":136}],30:[function(require,module,exports){
 // 0 -> Array#forEach
 // 1 -> Array#map
 // 2 -> Array#filter
@@ -21158,7 +36078,7 @@ module.exports = function (TYPE, $create) {
   };
 };
 
-},{"./_array-species-create":29,"./_ctx":39,"./_iobject":62,"./_to-length":132,"./_to-object":133}],27:[function(require,module,exports){
+},{"./_array-species-create":33,"./_ctx":43,"./_iobject":66,"./_to-length":136,"./_to-object":137}],31:[function(require,module,exports){
 var aFunction = require('./_a-function');
 var toObject = require('./_to-object');
 var IObject = require('./_iobject');
@@ -21188,7 +36108,7 @@ module.exports = function (that, callbackfn, aLen, memo, isRight) {
   return memo;
 };
 
-},{"./_a-function":16,"./_iobject":62,"./_to-length":132,"./_to-object":133}],28:[function(require,module,exports){
+},{"./_a-function":20,"./_iobject":66,"./_to-length":136,"./_to-object":137}],32:[function(require,module,exports){
 var isObject = require('./_is-object');
 var isArray = require('./_is-array');
 var SPECIES = require('./_wks')('species');
@@ -21206,7 +36126,7 @@ module.exports = function (original) {
   } return C === undefined ? Array : C;
 };
 
-},{"./_is-array":64,"./_is-object":66,"./_wks":143}],29:[function(require,module,exports){
+},{"./_is-array":68,"./_is-object":70,"./_wks":147}],33:[function(require,module,exports){
 // 9.4.2.3 ArraySpeciesCreate(originalArray, length)
 var speciesConstructor = require('./_array-species-constructor');
 
@@ -21214,7 +36134,7 @@ module.exports = function (original, length) {
   return new (speciesConstructor(original))(length);
 };
 
-},{"./_array-species-constructor":28}],30:[function(require,module,exports){
+},{"./_array-species-constructor":32}],34:[function(require,module,exports){
 'use strict';
 var aFunction = require('./_a-function');
 var isObject = require('./_is-object');
@@ -21241,7 +36161,7 @@ module.exports = Function.bind || function bind(that /* , ...args */) {
   return bound;
 };
 
-},{"./_a-function":16,"./_invoke":61,"./_is-object":66}],31:[function(require,module,exports){
+},{"./_a-function":20,"./_invoke":65,"./_is-object":70}],35:[function(require,module,exports){
 // getting tag from 19.1.3.6 Object.prototype.toString()
 var cof = require('./_cof');
 var TAG = require('./_wks')('toStringTag');
@@ -21266,14 +36186,14 @@ module.exports = function (it) {
     : (B = cof(O)) == 'Object' && typeof O.callee == 'function' ? 'Arguments' : B;
 };
 
-},{"./_cof":32,"./_wks":143}],32:[function(require,module,exports){
+},{"./_cof":36,"./_wks":147}],36:[function(require,module,exports){
 var toString = {}.toString;
 
 module.exports = function (it) {
   return toString.call(it).slice(8, -1);
 };
 
-},{}],33:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 'use strict';
 var dP = require('./_object-dp').f;
 var create = require('./_object-create');
@@ -21419,7 +36339,7 @@ module.exports = {
   }
 };
 
-},{"./_an-instance":20,"./_ctx":39,"./_descriptors":43,"./_for-of":53,"./_iter-define":70,"./_iter-step":72,"./_meta":80,"./_object-create":85,"./_object-dp":86,"./_redefine-all":105,"./_set-species":114,"./_validate-collection":140}],34:[function(require,module,exports){
+},{"./_an-instance":24,"./_ctx":43,"./_descriptors":47,"./_for-of":57,"./_iter-define":74,"./_iter-step":76,"./_meta":84,"./_object-create":89,"./_object-dp":90,"./_redefine-all":109,"./_set-species":118,"./_validate-collection":144}],38:[function(require,module,exports){
 // https://github.com/DavidBruant/Map-Set.prototype.toJSON
 var classof = require('./_classof');
 var from = require('./_array-from-iterable');
@@ -21430,7 +36350,7 @@ module.exports = function (NAME) {
   };
 };
 
-},{"./_array-from-iterable":24,"./_classof":31}],35:[function(require,module,exports){
+},{"./_array-from-iterable":28,"./_classof":35}],39:[function(require,module,exports){
 'use strict';
 var redefineAll = require('./_redefine-all');
 var getWeak = require('./_meta').getWeak;
@@ -21517,7 +36437,7 @@ module.exports = {
   ufstore: uncaughtFrozenStore
 };
 
-},{"./_an-instance":20,"./_an-object":21,"./_array-methods":26,"./_for-of":53,"./_has":56,"./_is-object":66,"./_meta":80,"./_redefine-all":105,"./_validate-collection":140}],36:[function(require,module,exports){
+},{"./_an-instance":24,"./_an-object":25,"./_array-methods":30,"./_for-of":57,"./_has":60,"./_is-object":70,"./_meta":84,"./_redefine-all":109,"./_validate-collection":144}],40:[function(require,module,exports){
 'use strict';
 
 var global = require('./_global');
@@ -21628,11 +36548,11 @@ module.exports = function (NAME, wrapper, methods, common, IS_MAP, IS_WEAK) {
   return C;
 };
 
-},{"./_an-instance":20,"./_export":47,"./_fails":49,"./_for-of":53,"./_global":55,"./_inherit-if-required":60,"./_is-object":66,"./_iter-detect":71,"./_meta":80,"./_redefine":106,"./_redefine-all":105,"./_set-to-string-tag":115}],37:[function(require,module,exports){
+},{"./_an-instance":24,"./_export":51,"./_fails":53,"./_for-of":57,"./_global":59,"./_inherit-if-required":64,"./_is-object":70,"./_iter-detect":75,"./_meta":84,"./_redefine":110,"./_redefine-all":109,"./_set-to-string-tag":119}],41:[function(require,module,exports){
 var core = module.exports = { version: '2.6.12' };
 if (typeof __e == 'number') __e = core; // eslint-disable-line no-undef
 
-},{}],38:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 'use strict';
 var $defineProperty = require('./_object-dp');
 var createDesc = require('./_property-desc');
@@ -21642,7 +36562,7 @@ module.exports = function (object, index, value) {
   else object[index] = value;
 };
 
-},{"./_object-dp":86,"./_property-desc":104}],39:[function(require,module,exports){
+},{"./_object-dp":90,"./_property-desc":108}],43:[function(require,module,exports){
 // optional / simple context binding
 var aFunction = require('./_a-function');
 module.exports = function (fn, that, length) {
@@ -21664,7 +36584,7 @@ module.exports = function (fn, that, length) {
   };
 };
 
-},{"./_a-function":16}],40:[function(require,module,exports){
+},{"./_a-function":20}],44:[function(require,module,exports){
 'use strict';
 // 20.3.4.36 / 15.9.5.43 Date.prototype.toISOString()
 var fails = require('./_fails');
@@ -21692,7 +36612,7 @@ module.exports = (fails(function () {
     ':' + lz(d.getUTCSeconds()) + '.' + (m > 99 ? m : '0' + lz(m)) + 'Z';
 } : $toISOString;
 
-},{"./_fails":49}],41:[function(require,module,exports){
+},{"./_fails":53}],45:[function(require,module,exports){
 'use strict';
 var anObject = require('./_an-object');
 var toPrimitive = require('./_to-primitive');
@@ -21703,20 +36623,20 @@ module.exports = function (hint) {
   return toPrimitive(anObject(this), hint != NUMBER);
 };
 
-},{"./_an-object":21,"./_to-primitive":134}],42:[function(require,module,exports){
+},{"./_an-object":25,"./_to-primitive":138}],46:[function(require,module,exports){
 // 7.2.1 RequireObjectCoercible(argument)
 module.exports = function (it) {
   if (it == undefined) throw TypeError("Can't call method on  " + it);
   return it;
 };
 
-},{}],43:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 // Thank's IE8 for his funny defineProperty
 module.exports = !require('./_fails')(function () {
   return Object.defineProperty({}, 'a', { get: function () { return 7; } }).a != 7;
 });
 
-},{"./_fails":49}],44:[function(require,module,exports){
+},{"./_fails":53}],48:[function(require,module,exports){
 var isObject = require('./_is-object');
 var document = require('./_global').document;
 // typeof document.createElement is 'object' in old IE
@@ -21725,13 +36645,13 @@ module.exports = function (it) {
   return is ? document.createElement(it) : {};
 };
 
-},{"./_global":55,"./_is-object":66}],45:[function(require,module,exports){
+},{"./_global":59,"./_is-object":70}],49:[function(require,module,exports){
 // IE 8- don't enum bug keys
 module.exports = (
   'constructor,hasOwnProperty,isPrototypeOf,propertyIsEnumerable,toLocaleString,toString,valueOf'
 ).split(',');
 
-},{}],46:[function(require,module,exports){
+},{}],50:[function(require,module,exports){
 // all enumerable object keys, includes symbols
 var getKeys = require('./_object-keys');
 var gOPS = require('./_object-gops');
@@ -21748,7 +36668,7 @@ module.exports = function (it) {
   } return result;
 };
 
-},{"./_object-gops":92,"./_object-keys":95,"./_object-pie":96}],47:[function(require,module,exports){
+},{"./_object-gops":96,"./_object-keys":99,"./_object-pie":100}],51:[function(require,module,exports){
 "use strict";
 
 var global = require('./_global');
@@ -21810,7 +36730,7 @@ $export.R = 128; // real proto method for `library`
 
 module.exports = $export;
 
-},{"./_core":37,"./_ctx":39,"./_global":55,"./_hide":57,"./_redefine":106}],48:[function(require,module,exports){
+},{"./_core":41,"./_ctx":43,"./_global":59,"./_hide":61,"./_redefine":110}],52:[function(require,module,exports){
 var MATCH = require('./_wks')('match');
 module.exports = function (KEY) {
   var re = /./;
@@ -21824,7 +36744,7 @@ module.exports = function (KEY) {
   } return true;
 };
 
-},{"./_wks":143}],49:[function(require,module,exports){
+},{"./_wks":147}],53:[function(require,module,exports){
 module.exports = function (exec) {
   try {
     return !!exec();
@@ -21833,7 +36753,7 @@ module.exports = function (exec) {
   }
 };
 
-},{}],50:[function(require,module,exports){
+},{}],54:[function(require,module,exports){
 'use strict';
 require('./es6.regexp.exec');
 var redefine = require('./_redefine');
@@ -21931,7 +36851,7 @@ module.exports = function (KEY, length, exec) {
   }
 };
 
-},{"./_defined":42,"./_fails":49,"./_hide":57,"./_redefine":106,"./_regexp-exec":108,"./_wks":143,"./es6.regexp.exec":240}],51:[function(require,module,exports){
+},{"./_defined":46,"./_fails":53,"./_hide":61,"./_redefine":110,"./_regexp-exec":112,"./_wks":147,"./es6.regexp.exec":244}],55:[function(require,module,exports){
 'use strict';
 // 21.2.5.3 get RegExp.prototype.flags
 var anObject = require('./_an-object');
@@ -21946,7 +36866,7 @@ module.exports = function () {
   return result;
 };
 
-},{"./_an-object":21}],52:[function(require,module,exports){
+},{"./_an-object":25}],56:[function(require,module,exports){
 'use strict';
 // https://tc39.github.io/proposal-flatMap/#sec-FlattenIntoArray
 var isArray = require('./_is-array');
@@ -21987,7 +36907,7 @@ function flattenIntoArray(target, original, source, sourceLen, start, depth, map
 
 module.exports = flattenIntoArray;
 
-},{"./_ctx":39,"./_is-array":64,"./_is-object":66,"./_to-length":132,"./_wks":143}],53:[function(require,module,exports){
+},{"./_ctx":43,"./_is-array":68,"./_is-object":70,"./_to-length":136,"./_wks":147}],57:[function(require,module,exports){
 var ctx = require('./_ctx');
 var call = require('./_iter-call');
 var isArrayIter = require('./_is-array-iter');
@@ -22014,10 +36934,10 @@ var exports = module.exports = function (iterable, entries, fn, that, ITERATOR) 
 exports.BREAK = BREAK;
 exports.RETURN = RETURN;
 
-},{"./_an-object":21,"./_ctx":39,"./_is-array-iter":63,"./_iter-call":68,"./_to-length":132,"./core.get-iterator-method":144}],54:[function(require,module,exports){
+},{"./_an-object":25,"./_ctx":43,"./_is-array-iter":67,"./_iter-call":72,"./_to-length":136,"./core.get-iterator-method":148}],58:[function(require,module,exports){
 module.exports = require('./_shared')('native-function-to-string', Function.toString);
 
-},{"./_shared":117}],55:[function(require,module,exports){
+},{"./_shared":121}],59:[function(require,module,exports){
 // https://github.com/zloirock/core-js/issues/86#issuecomment-115759028
 var global = module.exports = typeof window != 'undefined' && window.Math == Math
   ? window : typeof self != 'undefined' && self.Math == Math ? self
@@ -22025,13 +36945,13 @@ var global = module.exports = typeof window != 'undefined' && window.Math == Mat
   : Function('return this')();
 if (typeof __g == 'number') __g = global; // eslint-disable-line no-undef
 
-},{}],56:[function(require,module,exports){
+},{}],60:[function(require,module,exports){
 var hasOwnProperty = {}.hasOwnProperty;
 module.exports = function (it, key) {
   return hasOwnProperty.call(it, key);
 };
 
-},{}],57:[function(require,module,exports){
+},{}],61:[function(require,module,exports){
 var dP = require('./_object-dp');
 var createDesc = require('./_property-desc');
 module.exports = require('./_descriptors') ? function (object, key, value) {
@@ -22041,16 +36961,16 @@ module.exports = require('./_descriptors') ? function (object, key, value) {
   return object;
 };
 
-},{"./_descriptors":43,"./_object-dp":86,"./_property-desc":104}],58:[function(require,module,exports){
+},{"./_descriptors":47,"./_object-dp":90,"./_property-desc":108}],62:[function(require,module,exports){
 var document = require('./_global').document;
 module.exports = document && document.documentElement;
 
-},{"./_global":55}],59:[function(require,module,exports){
+},{"./_global":59}],63:[function(require,module,exports){
 module.exports = !require('./_descriptors') && !require('./_fails')(function () {
   return Object.defineProperty(require('./_dom-create')('div'), 'a', { get: function () { return 7; } }).a != 7;
 });
 
-},{"./_descriptors":43,"./_dom-create":44,"./_fails":49}],60:[function(require,module,exports){
+},{"./_descriptors":47,"./_dom-create":48,"./_fails":53}],64:[function(require,module,exports){
 var isObject = require('./_is-object');
 var setPrototypeOf = require('./_set-proto').set;
 module.exports = function (that, target, C) {
@@ -22061,7 +36981,7 @@ module.exports = function (that, target, C) {
   } return that;
 };
 
-},{"./_is-object":66,"./_set-proto":113}],61:[function(require,module,exports){
+},{"./_is-object":70,"./_set-proto":117}],65:[function(require,module,exports){
 // fast apply, http://jsperf.lnkit.com/fast-apply/5
 module.exports = function (fn, args, that) {
   var un = that === undefined;
@@ -22079,7 +36999,7 @@ module.exports = function (fn, args, that) {
   } return fn.apply(that, args);
 };
 
-},{}],62:[function(require,module,exports){
+},{}],66:[function(require,module,exports){
 // fallback for non-array-like ES3 and non-enumerable old V8 strings
 var cof = require('./_cof');
 // eslint-disable-next-line no-prototype-builtins
@@ -22087,7 +37007,7 @@ module.exports = Object('z').propertyIsEnumerable(0) ? Object : function (it) {
   return cof(it) == 'String' ? it.split('') : Object(it);
 };
 
-},{"./_cof":32}],63:[function(require,module,exports){
+},{"./_cof":36}],67:[function(require,module,exports){
 // check on default Array iterator
 var Iterators = require('./_iterators');
 var ITERATOR = require('./_wks')('iterator');
@@ -22097,14 +37017,14 @@ module.exports = function (it) {
   return it !== undefined && (Iterators.Array === it || ArrayProto[ITERATOR] === it);
 };
 
-},{"./_iterators":73,"./_wks":143}],64:[function(require,module,exports){
+},{"./_iterators":77,"./_wks":147}],68:[function(require,module,exports){
 // 7.2.2 IsArray(argument)
 var cof = require('./_cof');
 module.exports = Array.isArray || function isArray(arg) {
   return cof(arg) == 'Array';
 };
 
-},{"./_cof":32}],65:[function(require,module,exports){
+},{"./_cof":36}],69:[function(require,module,exports){
 // 20.1.2.3 Number.isInteger(number)
 var isObject = require('./_is-object');
 var floor = Math.floor;
@@ -22112,12 +37032,12 @@ module.exports = function isInteger(it) {
   return !isObject(it) && isFinite(it) && floor(it) === it;
 };
 
-},{"./_is-object":66}],66:[function(require,module,exports){
+},{"./_is-object":70}],70:[function(require,module,exports){
 module.exports = function (it) {
   return typeof it === 'object' ? it !== null : typeof it === 'function';
 };
 
-},{}],67:[function(require,module,exports){
+},{}],71:[function(require,module,exports){
 // 7.2.8 IsRegExp(argument)
 var isObject = require('./_is-object');
 var cof = require('./_cof');
@@ -22127,7 +37047,7 @@ module.exports = function (it) {
   return isObject(it) && ((isRegExp = it[MATCH]) !== undefined ? !!isRegExp : cof(it) == 'RegExp');
 };
 
-},{"./_cof":32,"./_is-object":66,"./_wks":143}],68:[function(require,module,exports){
+},{"./_cof":36,"./_is-object":70,"./_wks":147}],72:[function(require,module,exports){
 // call something on iterator step with safe closing on error
 var anObject = require('./_an-object');
 module.exports = function (iterator, fn, value, entries) {
@@ -22141,7 +37061,7 @@ module.exports = function (iterator, fn, value, entries) {
   }
 };
 
-},{"./_an-object":21}],69:[function(require,module,exports){
+},{"./_an-object":25}],73:[function(require,module,exports){
 'use strict';
 var create = require('./_object-create');
 var descriptor = require('./_property-desc');
@@ -22156,7 +37076,7 @@ module.exports = function (Constructor, NAME, next) {
   setToStringTag(Constructor, NAME + ' Iterator');
 };
 
-},{"./_hide":57,"./_object-create":85,"./_property-desc":104,"./_set-to-string-tag":115,"./_wks":143}],70:[function(require,module,exports){
+},{"./_hide":61,"./_object-create":89,"./_property-desc":108,"./_set-to-string-tag":119,"./_wks":147}],74:[function(require,module,exports){
 'use strict';
 
 var LIBRARY = require('./_library');
@@ -22263,7 +37183,7 @@ module.exports = function (Base, NAME, Constructor, next, DEFAULT, IS_SET, FORCE
   return methods;
 };
 
-},{"./_export":47,"./_hide":57,"./_iter-create":69,"./_iterators":73,"./_library":74,"./_object-gpo":93,"./_redefine":106,"./_set-to-string-tag":115,"./_wks":143}],71:[function(require,module,exports){
+},{"./_export":51,"./_hide":61,"./_iter-create":73,"./_iterators":77,"./_library":78,"./_object-gpo":97,"./_redefine":110,"./_set-to-string-tag":119,"./_wks":147}],75:[function(require,module,exports){
 var ITERATOR = require('./_wks')('iterator');
 var SAFE_CLOSING = false;
 
@@ -22287,18 +37207,18 @@ module.exports = function (exec, skipClosing) {
   return safe;
 };
 
-},{"./_wks":143}],72:[function(require,module,exports){
+},{"./_wks":147}],76:[function(require,module,exports){
 module.exports = function (done, value) {
   return { value: value, done: !!done };
 };
 
-},{}],73:[function(require,module,exports){
+},{}],77:[function(require,module,exports){
 module.exports = {};
 
-},{}],74:[function(require,module,exports){
+},{}],78:[function(require,module,exports){
 module.exports = false;
 
-},{}],75:[function(require,module,exports){
+},{}],79:[function(require,module,exports){
 // 20.2.2.14 Math.expm1(x)
 var $expm1 = Math.expm1;
 module.exports = (!$expm1
@@ -22310,7 +37230,7 @@ module.exports = (!$expm1
   return (x = +x) == 0 ? x : x > -1e-6 && x < 1e-6 ? x + x * x / 2 : Math.exp(x) - 1;
 } : $expm1;
 
-},{}],76:[function(require,module,exports){
+},{}],80:[function(require,module,exports){
 // 20.2.2.16 Math.fround(x)
 var sign = require('./_math-sign');
 var pow = Math.pow;
@@ -22335,13 +37255,13 @@ module.exports = Math.fround || function fround(x) {
   return $sign * result;
 };
 
-},{"./_math-sign":79}],77:[function(require,module,exports){
+},{"./_math-sign":83}],81:[function(require,module,exports){
 // 20.2.2.20 Math.log1p(x)
 module.exports = Math.log1p || function log1p(x) {
   return (x = +x) > -1e-8 && x < 1e-8 ? x - x * x / 2 : Math.log(1 + x);
 };
 
-},{}],78:[function(require,module,exports){
+},{}],82:[function(require,module,exports){
 // https://rwaldron.github.io/proposal-math-extensions/
 module.exports = Math.scale || function scale(x, inLow, inHigh, outLow, outHigh) {
   if (
@@ -22361,14 +37281,14 @@ module.exports = Math.scale || function scale(x, inLow, inHigh, outLow, outHigh)
   return (x - inLow) * (outHigh - outLow) / (inHigh - inLow) + outLow;
 };
 
-},{}],79:[function(require,module,exports){
+},{}],83:[function(require,module,exports){
 // 20.2.2.28 Math.sign(x)
 module.exports = Math.sign || function sign(x) {
   // eslint-disable-next-line no-self-compare
   return (x = +x) == 0 || x != x ? x : x < 0 ? -1 : 1;
 };
 
-},{}],80:[function(require,module,exports){
+},{}],84:[function(require,module,exports){
 var META = require('./_uid')('meta');
 var isObject = require('./_is-object');
 var has = require('./_has');
@@ -22423,7 +37343,7 @@ var meta = module.exports = {
   onFreeze: onFreeze
 };
 
-},{"./_fails":49,"./_has":56,"./_is-object":66,"./_object-dp":86,"./_uid":138}],81:[function(require,module,exports){
+},{"./_fails":53,"./_has":60,"./_is-object":70,"./_object-dp":90,"./_uid":142}],85:[function(require,module,exports){
 "use strict";
 
 var Map = require('./es6.map');
@@ -22494,7 +37414,7 @@ module.exports = {
   exp: exp
 };
 
-},{"./_export":47,"./_shared":117,"./es6.map":175,"./es6.weak-map":282}],82:[function(require,module,exports){
+},{"./_export":51,"./_shared":121,"./es6.map":179,"./es6.weak-map":286}],86:[function(require,module,exports){
 var global = require('./_global');
 var macrotask = require('./_task').set;
 var Observer = global.MutationObserver || global.WebKitMutationObserver;
@@ -22565,7 +37485,7 @@ module.exports = function () {
   };
 };
 
-},{"./_cof":32,"./_global":55,"./_task":127}],83:[function(require,module,exports){
+},{"./_cof":36,"./_global":59,"./_task":131}],87:[function(require,module,exports){
 'use strict';
 // 25.4.1.5 NewPromiseCapability(C)
 var aFunction = require('./_a-function');
@@ -22585,7 +37505,7 @@ module.exports.f = function (C) {
   return new PromiseCapability(C);
 };
 
-},{"./_a-function":16}],84:[function(require,module,exports){
+},{"./_a-function":20}],88:[function(require,module,exports){
 'use strict';
 // 19.1.2.1 Object.assign(target, source, ...)
 var DESCRIPTORS = require('./_descriptors');
@@ -22625,7 +37545,7 @@ module.exports = !$assign || require('./_fails')(function () {
   } return T;
 } : $assign;
 
-},{"./_descriptors":43,"./_fails":49,"./_iobject":62,"./_object-gops":92,"./_object-keys":95,"./_object-pie":96,"./_to-object":133}],85:[function(require,module,exports){
+},{"./_descriptors":47,"./_fails":53,"./_iobject":66,"./_object-gops":96,"./_object-keys":99,"./_object-pie":100,"./_to-object":137}],89:[function(require,module,exports){
 // 19.1.2.2 / 15.2.3.5 Object.create(O [, Properties])
 var anObject = require('./_an-object');
 var dPs = require('./_object-dps');
@@ -22668,7 +37588,7 @@ module.exports = Object.create || function create(O, Properties) {
   return Properties === undefined ? result : dPs(result, Properties);
 };
 
-},{"./_an-object":21,"./_dom-create":44,"./_enum-bug-keys":45,"./_html":58,"./_object-dps":87,"./_shared-key":116}],86:[function(require,module,exports){
+},{"./_an-object":25,"./_dom-create":48,"./_enum-bug-keys":49,"./_html":62,"./_object-dps":91,"./_shared-key":120}],90:[function(require,module,exports){
 var anObject = require('./_an-object');
 var IE8_DOM_DEFINE = require('./_ie8-dom-define');
 var toPrimitive = require('./_to-primitive');
@@ -22686,7 +37606,7 @@ exports.f = require('./_descriptors') ? Object.defineProperty : function defineP
   return O;
 };
 
-},{"./_an-object":21,"./_descriptors":43,"./_ie8-dom-define":59,"./_to-primitive":134}],87:[function(require,module,exports){
+},{"./_an-object":25,"./_descriptors":47,"./_ie8-dom-define":63,"./_to-primitive":138}],91:[function(require,module,exports){
 var dP = require('./_object-dp');
 var anObject = require('./_an-object');
 var getKeys = require('./_object-keys');
@@ -22701,7 +37621,7 @@ module.exports = require('./_descriptors') ? Object.defineProperties : function 
   return O;
 };
 
-},{"./_an-object":21,"./_descriptors":43,"./_object-dp":86,"./_object-keys":95}],88:[function(require,module,exports){
+},{"./_an-object":25,"./_descriptors":47,"./_object-dp":90,"./_object-keys":99}],92:[function(require,module,exports){
 'use strict';
 // Forced replacement prototype accessors methods
 module.exports = require('./_library') || !require('./_fails')(function () {
@@ -22712,7 +37632,7 @@ module.exports = require('./_library') || !require('./_fails')(function () {
   delete require('./_global')[K];
 });
 
-},{"./_fails":49,"./_global":55,"./_library":74}],89:[function(require,module,exports){
+},{"./_fails":53,"./_global":59,"./_library":78}],93:[function(require,module,exports){
 var pIE = require('./_object-pie');
 var createDesc = require('./_property-desc');
 var toIObject = require('./_to-iobject');
@@ -22730,7 +37650,7 @@ exports.f = require('./_descriptors') ? gOPD : function getOwnPropertyDescriptor
   if (has(O, P)) return createDesc(!pIE.f.call(O, P), O[P]);
 };
 
-},{"./_descriptors":43,"./_has":56,"./_ie8-dom-define":59,"./_object-pie":96,"./_property-desc":104,"./_to-iobject":131,"./_to-primitive":134}],90:[function(require,module,exports){
+},{"./_descriptors":47,"./_has":60,"./_ie8-dom-define":63,"./_object-pie":100,"./_property-desc":108,"./_to-iobject":135,"./_to-primitive":138}],94:[function(require,module,exports){
 // fallback for IE11 buggy Object.getOwnPropertyNames with iframe and window
 var toIObject = require('./_to-iobject');
 var gOPN = require('./_object-gopn').f;
@@ -22751,7 +37671,7 @@ module.exports.f = function getOwnPropertyNames(it) {
   return windowNames && toString.call(it) == '[object Window]' ? getWindowNames(it) : gOPN(toIObject(it));
 };
 
-},{"./_object-gopn":91,"./_to-iobject":131}],91:[function(require,module,exports){
+},{"./_object-gopn":95,"./_to-iobject":135}],95:[function(require,module,exports){
 // 19.1.2.7 / 15.2.3.4 Object.getOwnPropertyNames(O)
 var $keys = require('./_object-keys-internal');
 var hiddenKeys = require('./_enum-bug-keys').concat('length', 'prototype');
@@ -22760,10 +37680,10 @@ exports.f = Object.getOwnPropertyNames || function getOwnPropertyNames(O) {
   return $keys(O, hiddenKeys);
 };
 
-},{"./_enum-bug-keys":45,"./_object-keys-internal":94}],92:[function(require,module,exports){
+},{"./_enum-bug-keys":49,"./_object-keys-internal":98}],96:[function(require,module,exports){
 exports.f = Object.getOwnPropertySymbols;
 
-},{}],93:[function(require,module,exports){
+},{}],97:[function(require,module,exports){
 // 19.1.2.9 / 15.2.3.2 Object.getPrototypeOf(O)
 var has = require('./_has');
 var toObject = require('./_to-object');
@@ -22778,7 +37698,7 @@ module.exports = Object.getPrototypeOf || function (O) {
   } return O instanceof Object ? ObjectProto : null;
 };
 
-},{"./_has":56,"./_shared-key":116,"./_to-object":133}],94:[function(require,module,exports){
+},{"./_has":60,"./_shared-key":120,"./_to-object":137}],98:[function(require,module,exports){
 var has = require('./_has');
 var toIObject = require('./_to-iobject');
 var arrayIndexOf = require('./_array-includes')(false);
@@ -22797,7 +37717,7 @@ module.exports = function (object, names) {
   return result;
 };
 
-},{"./_array-includes":25,"./_has":56,"./_shared-key":116,"./_to-iobject":131}],95:[function(require,module,exports){
+},{"./_array-includes":29,"./_has":60,"./_shared-key":120,"./_to-iobject":135}],99:[function(require,module,exports){
 // 19.1.2.14 / 15.2.3.14 Object.keys(O)
 var $keys = require('./_object-keys-internal');
 var enumBugKeys = require('./_enum-bug-keys');
@@ -22806,10 +37726,10 @@ module.exports = Object.keys || function keys(O) {
   return $keys(O, enumBugKeys);
 };
 
-},{"./_enum-bug-keys":45,"./_object-keys-internal":94}],96:[function(require,module,exports){
+},{"./_enum-bug-keys":49,"./_object-keys-internal":98}],100:[function(require,module,exports){
 exports.f = {}.propertyIsEnumerable;
 
-},{}],97:[function(require,module,exports){
+},{}],101:[function(require,module,exports){
 "use strict";
 
 // most Object methods by ES6 should accept primitives
@@ -22828,7 +37748,7 @@ module.exports = function (KEY, exec) {
   }), 'Object', exp);
 };
 
-},{"./_core":37,"./_export":47,"./_fails":49}],98:[function(require,module,exports){
+},{"./_core":41,"./_export":51,"./_fails":53}],102:[function(require,module,exports){
 var DESCRIPTORS = require('./_descriptors');
 var getKeys = require('./_object-keys');
 var toIObject = require('./_to-iobject');
@@ -22851,7 +37771,7 @@ module.exports = function (isEntries) {
   };
 };
 
-},{"./_descriptors":43,"./_object-keys":95,"./_object-pie":96,"./_to-iobject":131}],99:[function(require,module,exports){
+},{"./_descriptors":47,"./_object-keys":99,"./_object-pie":100,"./_to-iobject":135}],103:[function(require,module,exports){
 // all object keys, includes non-enumerable and symbols
 var gOPN = require('./_object-gopn');
 var gOPS = require('./_object-gops');
@@ -22863,7 +37783,7 @@ module.exports = Reflect && Reflect.ownKeys || function ownKeys(it) {
   return getSymbols ? keys.concat(getSymbols(it)) : keys;
 };
 
-},{"./_an-object":21,"./_global":55,"./_object-gopn":91,"./_object-gops":92}],100:[function(require,module,exports){
+},{"./_an-object":25,"./_global":59,"./_object-gopn":95,"./_object-gops":96}],104:[function(require,module,exports){
 var $parseFloat = require('./_global').parseFloat;
 var $trim = require('./_string-trim').trim;
 
@@ -22873,7 +37793,7 @@ module.exports = 1 / $parseFloat(require('./_string-ws') + '-0') !== -Infinity ?
   return result === 0 && string.charAt(0) == '-' ? -0 : result;
 } : $parseFloat;
 
-},{"./_global":55,"./_string-trim":125,"./_string-ws":126}],101:[function(require,module,exports){
+},{"./_global":59,"./_string-trim":129,"./_string-ws":130}],105:[function(require,module,exports){
 var $parseInt = require('./_global').parseInt;
 var $trim = require('./_string-trim').trim;
 var ws = require('./_string-ws');
@@ -22884,7 +37804,7 @@ module.exports = $parseInt(ws + '08') !== 8 || $parseInt(ws + '0x16') !== 22 ? f
   return $parseInt(string, (radix >>> 0) || (hex.test(string) ? 16 : 10));
 } : $parseInt;
 
-},{"./_global":55,"./_string-trim":125,"./_string-ws":126}],102:[function(require,module,exports){
+},{"./_global":59,"./_string-trim":129,"./_string-ws":130}],106:[function(require,module,exports){
 module.exports = function (exec) {
   try {
     return { e: false, v: exec() };
@@ -22893,7 +37813,7 @@ module.exports = function (exec) {
   }
 };
 
-},{}],103:[function(require,module,exports){
+},{}],107:[function(require,module,exports){
 var anObject = require('./_an-object');
 var isObject = require('./_is-object');
 var newPromiseCapability = require('./_new-promise-capability');
@@ -22907,7 +37827,7 @@ module.exports = function (C, x) {
   return promiseCapability.promise;
 };
 
-},{"./_an-object":21,"./_is-object":66,"./_new-promise-capability":83}],104:[function(require,module,exports){
+},{"./_an-object":25,"./_is-object":70,"./_new-promise-capability":87}],108:[function(require,module,exports){
 module.exports = function (bitmap, value) {
   return {
     enumerable: !(bitmap & 1),
@@ -22917,14 +37837,14 @@ module.exports = function (bitmap, value) {
   };
 };
 
-},{}],105:[function(require,module,exports){
+},{}],109:[function(require,module,exports){
 var redefine = require('./_redefine');
 module.exports = function (target, src, safe) {
   for (var key in src) redefine(target, key, src[key], safe);
   return target;
 };
 
-},{"./_redefine":106}],106:[function(require,module,exports){
+},{"./_redefine":110}],110:[function(require,module,exports){
 var global = require('./_global');
 var hide = require('./_hide');
 var has = require('./_has');
@@ -22957,7 +37877,7 @@ require('./_core').inspectSource = function (it) {
   return typeof this == 'function' && this[SRC] || $toString.call(this);
 });
 
-},{"./_core":37,"./_function-to-string":54,"./_global":55,"./_has":56,"./_hide":57,"./_uid":138}],107:[function(require,module,exports){
+},{"./_core":41,"./_function-to-string":58,"./_global":59,"./_has":60,"./_hide":61,"./_uid":142}],111:[function(require,module,exports){
 'use strict';
 
 var classof = require('./_classof');
@@ -22980,7 +37900,7 @@ module.exports = function (R, S) {
   return builtinExec.call(R, S);
 };
 
-},{"./_classof":31}],108:[function(require,module,exports){
+},{"./_classof":35}],112:[function(require,module,exports){
 'use strict';
 
 var regexpFlags = require('./_flags');
@@ -23040,7 +37960,7 @@ if (PATCH) {
 
 module.exports = patchedExec;
 
-},{"./_flags":51}],109:[function(require,module,exports){
+},{"./_flags":55}],113:[function(require,module,exports){
 module.exports = function (regExp, replace) {
   var replacer = replace === Object(replace) ? function (part) {
     return replace[part];
@@ -23050,14 +37970,14 @@ module.exports = function (regExp, replace) {
   };
 };
 
-},{}],110:[function(require,module,exports){
+},{}],114:[function(require,module,exports){
 // 7.2.9 SameValue(x, y)
 module.exports = Object.is || function is(x, y) {
   // eslint-disable-next-line no-self-compare
   return x === y ? x !== 0 || 1 / x === 1 / y : x != x && y != y;
 };
 
-},{}],111:[function(require,module,exports){
+},{}],115:[function(require,module,exports){
 'use strict'; // https://tc39.github.io/proposal-setmap-offrom/
 
 var $export = require('./_export');
@@ -23096,7 +38016,7 @@ module.exports = function (COLLECTION) {
   });
 };
 
-},{"./_a-function":16,"./_ctx":39,"./_export":47,"./_for-of":53}],112:[function(require,module,exports){
+},{"./_a-function":20,"./_ctx":43,"./_export":51,"./_for-of":57}],116:[function(require,module,exports){
 'use strict'; // https://tc39.github.io/proposal-setmap-offrom/
 
 var $export = require('./_export');
@@ -23114,7 +38034,7 @@ module.exports = function (COLLECTION) {
   });
 };
 
-},{"./_export":47}],113:[function(require,module,exports){
+},{"./_export":51}],117:[function(require,module,exports){
 // Works with __proto__ only. Old v8 can't work with null proto objects.
 /* eslint-disable no-proto */
 var isObject = require('./_is-object');
@@ -23141,7 +38061,7 @@ module.exports = {
   check: check
 };
 
-},{"./_an-object":21,"./_ctx":39,"./_is-object":66,"./_object-gopd":89}],114:[function(require,module,exports){
+},{"./_an-object":25,"./_ctx":43,"./_is-object":70,"./_object-gopd":93}],118:[function(require,module,exports){
 'use strict';
 var global = require('./_global');
 var dP = require('./_object-dp');
@@ -23156,7 +38076,7 @@ module.exports = function (KEY) {
   });
 };
 
-},{"./_descriptors":43,"./_global":55,"./_object-dp":86,"./_wks":143}],115:[function(require,module,exports){
+},{"./_descriptors":47,"./_global":59,"./_object-dp":90,"./_wks":147}],119:[function(require,module,exports){
 var def = require('./_object-dp').f;
 var has = require('./_has');
 var TAG = require('./_wks')('toStringTag');
@@ -23165,14 +38085,14 @@ module.exports = function (it, tag, stat) {
   if (it && !has(it = stat ? it : it.prototype, TAG)) def(it, TAG, { configurable: true, value: tag });
 };
 
-},{"./_has":56,"./_object-dp":86,"./_wks":143}],116:[function(require,module,exports){
+},{"./_has":60,"./_object-dp":90,"./_wks":147}],120:[function(require,module,exports){
 var shared = require('./_shared')('keys');
 var uid = require('./_uid');
 module.exports = function (key) {
   return shared[key] || (shared[key] = uid(key));
 };
 
-},{"./_shared":117,"./_uid":138}],117:[function(require,module,exports){
+},{"./_shared":121,"./_uid":142}],121:[function(require,module,exports){
 var core = require('./_core');
 var global = require('./_global');
 var SHARED = '__core-js_shared__';
@@ -23186,7 +38106,7 @@ var store = global[SHARED] || (global[SHARED] = {});
   copyright: '© 2020 Denis Pushkarev (zloirock.ru)'
 });
 
-},{"./_core":37,"./_global":55,"./_library":74}],118:[function(require,module,exports){
+},{"./_core":41,"./_global":59,"./_library":78}],122:[function(require,module,exports){
 // 7.3.20 SpeciesConstructor(O, defaultConstructor)
 var anObject = require('./_an-object');
 var aFunction = require('./_a-function');
@@ -23197,7 +38117,7 @@ module.exports = function (O, D) {
   return C === undefined || (S = anObject(C)[SPECIES]) == undefined ? D : aFunction(S);
 };
 
-},{"./_a-function":16,"./_an-object":21,"./_wks":143}],119:[function(require,module,exports){
+},{"./_a-function":20,"./_an-object":25,"./_wks":147}],123:[function(require,module,exports){
 'use strict';
 var fails = require('./_fails');
 
@@ -23208,7 +38128,7 @@ module.exports = function (method, arg) {
   });
 };
 
-},{"./_fails":49}],120:[function(require,module,exports){
+},{"./_fails":53}],124:[function(require,module,exports){
 var toInteger = require('./_to-integer');
 var defined = require('./_defined');
 // true  -> String#at
@@ -23227,7 +38147,7 @@ module.exports = function (TO_STRING) {
   };
 };
 
-},{"./_defined":42,"./_to-integer":130}],121:[function(require,module,exports){
+},{"./_defined":46,"./_to-integer":134}],125:[function(require,module,exports){
 // helper for String#{startsWith, endsWith, includes}
 var isRegExp = require('./_is-regexp');
 var defined = require('./_defined');
@@ -23237,7 +38157,7 @@ module.exports = function (that, searchString, NAME) {
   return String(defined(that));
 };
 
-},{"./_defined":42,"./_is-regexp":67}],122:[function(require,module,exports){
+},{"./_defined":46,"./_is-regexp":71}],126:[function(require,module,exports){
 "use strict";
 
 var $export = require('./_export');
@@ -23264,7 +38184,7 @@ module.exports = function (NAME, exec) {
   }), 'String', O);
 };
 
-},{"./_defined":42,"./_export":47,"./_fails":49}],123:[function(require,module,exports){
+},{"./_defined":46,"./_export":51,"./_fails":53}],127:[function(require,module,exports){
 // https://github.com/tc39/proposal-string-pad-start-end
 var toLength = require('./_to-length');
 var repeat = require('./_string-repeat');
@@ -23282,7 +38202,7 @@ module.exports = function (that, maxLength, fillString, left) {
   return left ? stringFiller + S : S + stringFiller;
 };
 
-},{"./_defined":42,"./_string-repeat":124,"./_to-length":132}],124:[function(require,module,exports){
+},{"./_defined":46,"./_string-repeat":128,"./_to-length":136}],128:[function(require,module,exports){
 'use strict';
 var toInteger = require('./_to-integer');
 var defined = require('./_defined');
@@ -23296,7 +38216,7 @@ module.exports = function repeat(count) {
   return res;
 };
 
-},{"./_defined":42,"./_to-integer":130}],125:[function(require,module,exports){
+},{"./_defined":46,"./_to-integer":134}],129:[function(require,module,exports){
 "use strict";
 
 var $export = require('./_export');
@@ -23334,11 +38254,11 @@ var trim = exporter.trim = function (string, TYPE) {
 
 module.exports = exporter;
 
-},{"./_defined":42,"./_export":47,"./_fails":49,"./_string-ws":126}],126:[function(require,module,exports){
+},{"./_defined":46,"./_export":51,"./_fails":53,"./_string-ws":130}],130:[function(require,module,exports){
 module.exports = '\x09\x0A\x0B\x0C\x0D\x20\xA0\u1680\u180E\u2000\u2001\u2002\u2003' +
   '\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u2028\u2029\uFEFF';
 
-},{}],127:[function(require,module,exports){
+},{}],131:[function(require,module,exports){
 var ctx = require('./_ctx');
 var invoke = require('./_invoke');
 var html = require('./_html');
@@ -23424,7 +38344,7 @@ module.exports = {
   clear: clearTask
 };
 
-},{"./_cof":32,"./_ctx":39,"./_dom-create":44,"./_global":55,"./_html":58,"./_invoke":61}],128:[function(require,module,exports){
+},{"./_cof":36,"./_ctx":43,"./_dom-create":48,"./_global":59,"./_html":62,"./_invoke":65}],132:[function(require,module,exports){
 var toInteger = require('./_to-integer');
 var max = Math.max;
 var min = Math.min;
@@ -23433,7 +38353,7 @@ module.exports = function (index, length) {
   return index < 0 ? max(index + length, 0) : min(index, length);
 };
 
-},{"./_to-integer":130}],129:[function(require,module,exports){
+},{"./_to-integer":134}],133:[function(require,module,exports){
 // https://tc39.github.io/ecma262/#sec-toindex
 var toInteger = require('./_to-integer');
 var toLength = require('./_to-length');
@@ -23445,7 +38365,7 @@ module.exports = function (it) {
   return length;
 };
 
-},{"./_to-integer":130,"./_to-length":132}],130:[function(require,module,exports){
+},{"./_to-integer":134,"./_to-length":136}],134:[function(require,module,exports){
 // 7.1.4 ToInteger
 var ceil = Math.ceil;
 var floor = Math.floor;
@@ -23453,7 +38373,7 @@ module.exports = function (it) {
   return isNaN(it = +it) ? 0 : (it > 0 ? floor : ceil)(it);
 };
 
-},{}],131:[function(require,module,exports){
+},{}],135:[function(require,module,exports){
 // to indexed object, toObject with fallback for non-array-like ES3 strings
 var IObject = require('./_iobject');
 var defined = require('./_defined');
@@ -23461,7 +38381,7 @@ module.exports = function (it) {
   return IObject(defined(it));
 };
 
-},{"./_defined":42,"./_iobject":62}],132:[function(require,module,exports){
+},{"./_defined":46,"./_iobject":66}],136:[function(require,module,exports){
 // 7.1.15 ToLength
 var toInteger = require('./_to-integer');
 var min = Math.min;
@@ -23469,14 +38389,14 @@ module.exports = function (it) {
   return it > 0 ? min(toInteger(it), 0x1fffffffffffff) : 0; // pow(2, 53) - 1 == 9007199254740991
 };
 
-},{"./_to-integer":130}],133:[function(require,module,exports){
+},{"./_to-integer":134}],137:[function(require,module,exports){
 // 7.1.13 ToObject(argument)
 var defined = require('./_defined');
 module.exports = function (it) {
   return Object(defined(it));
 };
 
-},{"./_defined":42}],134:[function(require,module,exports){
+},{"./_defined":46}],138:[function(require,module,exports){
 // 7.1.1 ToPrimitive(input [, PreferredType])
 var isObject = require('./_is-object');
 // instead of the ES6 spec version, we didn't implement @@toPrimitive case
@@ -23490,7 +38410,7 @@ module.exports = function (it, S) {
   throw TypeError("Can't convert object to primitive value");
 };
 
-},{"./_is-object":66}],135:[function(require,module,exports){
+},{"./_is-object":70}],139:[function(require,module,exports){
 'use strict';
 
 if (require('./_descriptors')) {
@@ -24067,7 +38987,7 @@ if (require('./_descriptors')) {
   /* empty */
 };
 
-},{"./_an-instance":20,"./_array-copy-within":22,"./_array-fill":23,"./_array-includes":25,"./_array-methods":26,"./_classof":31,"./_ctx":39,"./_descriptors":43,"./_export":47,"./_fails":49,"./_global":55,"./_has":56,"./_hide":57,"./_is-array-iter":63,"./_is-object":66,"./_iter-detect":71,"./_iterators":73,"./_library":74,"./_object-create":85,"./_object-dp":86,"./_object-gopd":89,"./_object-gopn":91,"./_object-gpo":93,"./_property-desc":104,"./_redefine-all":105,"./_set-species":114,"./_species-constructor":118,"./_to-absolute-index":128,"./_to-index":129,"./_to-integer":130,"./_to-length":132,"./_to-object":133,"./_to-primitive":134,"./_typed":137,"./_typed-buffer":136,"./_uid":138,"./_wks":143,"./core.get-iterator-method":144,"./es6.array.iterator":156}],136:[function(require,module,exports){
+},{"./_an-instance":24,"./_array-copy-within":26,"./_array-fill":27,"./_array-includes":29,"./_array-methods":30,"./_classof":35,"./_ctx":43,"./_descriptors":47,"./_export":51,"./_fails":53,"./_global":59,"./_has":60,"./_hide":61,"./_is-array-iter":67,"./_is-object":70,"./_iter-detect":75,"./_iterators":77,"./_library":78,"./_object-create":89,"./_object-dp":90,"./_object-gopd":93,"./_object-gopn":95,"./_object-gpo":97,"./_property-desc":108,"./_redefine-all":109,"./_set-species":118,"./_species-constructor":122,"./_to-absolute-index":132,"./_to-index":133,"./_to-integer":134,"./_to-length":136,"./_to-object":137,"./_to-primitive":138,"./_typed":141,"./_typed-buffer":140,"./_uid":142,"./_wks":147,"./core.get-iterator-method":148,"./es6.array.iterator":160}],140:[function(require,module,exports){
 'use strict';
 var global = require('./_global');
 var DESCRIPTORS = require('./_descriptors');
@@ -24345,7 +39265,7 @@ hide($DataView[PROTOTYPE], $typed.VIEW, true);
 exports[ARRAY_BUFFER] = $ArrayBuffer;
 exports[DATA_VIEW] = $DataView;
 
-},{"./_an-instance":20,"./_array-fill":23,"./_descriptors":43,"./_fails":49,"./_global":55,"./_hide":57,"./_library":74,"./_object-dp":86,"./_object-gopn":91,"./_redefine-all":105,"./_set-to-string-tag":115,"./_to-index":129,"./_to-integer":130,"./_to-length":132,"./_typed":137}],137:[function(require,module,exports){
+},{"./_an-instance":24,"./_array-fill":27,"./_descriptors":47,"./_fails":53,"./_global":59,"./_hide":61,"./_library":78,"./_object-dp":90,"./_object-gopn":95,"./_redefine-all":109,"./_set-to-string-tag":119,"./_to-index":133,"./_to-integer":134,"./_to-length":136,"./_typed":141}],141:[function(require,module,exports){
 var global = require('./_global');
 var hide = require('./_hide');
 var uid = require('./_uid');
@@ -24375,27 +39295,27 @@ module.exports = {
   VIEW: VIEW
 };
 
-},{"./_global":55,"./_hide":57,"./_uid":138}],138:[function(require,module,exports){
+},{"./_global":59,"./_hide":61,"./_uid":142}],142:[function(require,module,exports){
 var id = 0;
 var px = Math.random();
 module.exports = function (key) {
   return 'Symbol('.concat(key === undefined ? '' : key, ')_', (++id + px).toString(36));
 };
 
-},{}],139:[function(require,module,exports){
+},{}],143:[function(require,module,exports){
 var global = require('./_global');
 var navigator = global.navigator;
 
 module.exports = navigator && navigator.userAgent || '';
 
-},{"./_global":55}],140:[function(require,module,exports){
+},{"./_global":59}],144:[function(require,module,exports){
 var isObject = require('./_is-object');
 module.exports = function (it, TYPE) {
   if (!isObject(it) || it._t !== TYPE) throw TypeError('Incompatible receiver, ' + TYPE + ' required!');
   return it;
 };
 
-},{"./_is-object":66}],141:[function(require,module,exports){
+},{"./_is-object":70}],145:[function(require,module,exports){
 var global = require('./_global');
 var core = require('./_core');
 var LIBRARY = require('./_library');
@@ -24406,10 +39326,10 @@ module.exports = function (name) {
   if (name.charAt(0) != '_' && !(name in $Symbol)) defineProperty($Symbol, name, { value: wksExt.f(name) });
 };
 
-},{"./_core":37,"./_global":55,"./_library":74,"./_object-dp":86,"./_wks-ext":142}],142:[function(require,module,exports){
+},{"./_core":41,"./_global":59,"./_library":78,"./_object-dp":90,"./_wks-ext":146}],146:[function(require,module,exports){
 exports.f = require('./_wks');
 
-},{"./_wks":143}],143:[function(require,module,exports){
+},{"./_wks":147}],147:[function(require,module,exports){
 var store = require('./_shared')('wks');
 var uid = require('./_uid');
 var Symbol = require('./_global').Symbol;
@@ -24422,7 +39342,7 @@ var $exports = module.exports = function (name) {
 
 $exports.store = store;
 
-},{"./_global":55,"./_shared":117,"./_uid":138}],144:[function(require,module,exports){
+},{"./_global":59,"./_shared":121,"./_uid":142}],148:[function(require,module,exports){
 var classof = require('./_classof');
 var ITERATOR = require('./_wks')('iterator');
 var Iterators = require('./_iterators');
@@ -24432,7 +39352,7 @@ module.exports = require('./_core').getIteratorMethod = function (it) {
     || Iterators[classof(it)];
 };
 
-},{"./_classof":31,"./_core":37,"./_iterators":73,"./_wks":143}],145:[function(require,module,exports){
+},{"./_classof":35,"./_core":41,"./_iterators":77,"./_wks":147}],149:[function(require,module,exports){
 "use strict";
 
 // https://github.com/benjamingr/RexExp.escape
@@ -24446,7 +39366,7 @@ $export($export.S, 'RegExp', {
   }
 });
 
-},{"./_export":47,"./_replacer":109}],146:[function(require,module,exports){
+},{"./_export":51,"./_replacer":113}],150:[function(require,module,exports){
 "use strict";
 
 // 22.1.3.3 Array.prototype.copyWithin(target, start, end = this.length)
@@ -24458,7 +39378,7 @@ $export($export.P, 'Array', {
 
 require('./_add-to-unscopables')('copyWithin');
 
-},{"./_add-to-unscopables":18,"./_array-copy-within":22,"./_export":47}],147:[function(require,module,exports){
+},{"./_add-to-unscopables":22,"./_array-copy-within":26,"./_export":51}],151:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -24474,7 +39394,7 @@ $export($export.P + $export.F * !require('./_strict-method')([].every, true), 'A
   }
 });
 
-},{"./_array-methods":26,"./_export":47,"./_strict-method":119}],148:[function(require,module,exports){
+},{"./_array-methods":30,"./_export":51,"./_strict-method":123}],152:[function(require,module,exports){
 "use strict";
 
 // 22.1.3.6 Array.prototype.fill(value, start = 0, end = this.length)
@@ -24486,7 +39406,7 @@ $export($export.P, 'Array', {
 
 require('./_add-to-unscopables')('fill');
 
-},{"./_add-to-unscopables":18,"./_array-fill":23,"./_export":47}],149:[function(require,module,exports){
+},{"./_add-to-unscopables":22,"./_array-fill":27,"./_export":51}],153:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -24502,7 +39422,7 @@ $export($export.P + $export.F * !require('./_strict-method')([].filter, true), '
   }
 });
 
-},{"./_array-methods":26,"./_export":47,"./_strict-method":119}],150:[function(require,module,exports){
+},{"./_array-methods":30,"./_export":51,"./_strict-method":123}],154:[function(require,module,exports){
 'use strict'; // 22.1.3.9 Array.prototype.findIndex(predicate, thisArg = undefined)
 
 var $export = require('./_export');
@@ -24525,7 +39445,7 @@ $export($export.P + $export.F * forced, 'Array', {
 
 require('./_add-to-unscopables')(KEY);
 
-},{"./_add-to-unscopables":18,"./_array-methods":26,"./_export":47}],151:[function(require,module,exports){
+},{"./_add-to-unscopables":22,"./_array-methods":30,"./_export":51}],155:[function(require,module,exports){
 'use strict'; // 22.1.3.8 Array.prototype.find(predicate, thisArg = undefined)
 
 var $export = require('./_export');
@@ -24548,7 +39468,7 @@ $export($export.P + $export.F * forced, 'Array', {
 
 require('./_add-to-unscopables')(KEY);
 
-},{"./_add-to-unscopables":18,"./_array-methods":26,"./_export":47}],152:[function(require,module,exports){
+},{"./_add-to-unscopables":22,"./_array-methods":30,"./_export":51}],156:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -24566,7 +39486,7 @@ $export($export.P + $export.F * !STRICT, 'Array', {
   }
 });
 
-},{"./_array-methods":26,"./_export":47,"./_strict-method":119}],153:[function(require,module,exports){
+},{"./_array-methods":30,"./_export":51,"./_strict-method":123}],157:[function(require,module,exports){
 'use strict';
 
 var ctx = require('./_ctx');
@@ -24619,7 +39539,7 @@ $export($export.S + $export.F * !require('./_iter-detect')(function (iter) {
   }
 });
 
-},{"./_create-property":38,"./_ctx":39,"./_export":47,"./_is-array-iter":63,"./_iter-call":68,"./_iter-detect":71,"./_to-length":132,"./_to-object":133,"./core.get-iterator-method":144}],154:[function(require,module,exports){
+},{"./_create-property":42,"./_ctx":43,"./_export":51,"./_is-array-iter":67,"./_iter-call":72,"./_iter-detect":75,"./_to-length":136,"./_to-object":137,"./core.get-iterator-method":148}],158:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -24638,7 +39558,7 @@ $export($export.P + $export.F * (NEGATIVE_ZERO || !require('./_strict-method')($
   }
 });
 
-},{"./_array-includes":25,"./_export":47,"./_strict-method":119}],155:[function(require,module,exports){
+},{"./_array-includes":29,"./_export":51,"./_strict-method":123}],159:[function(require,module,exports){
 "use strict";
 
 // 22.1.2.2 / 15.4.3.2 Array.isArray(arg)
@@ -24648,7 +39568,7 @@ $export($export.S, 'Array', {
   isArray: require('./_is-array')
 });
 
-},{"./_export":47,"./_is-array":64}],156:[function(require,module,exports){
+},{"./_export":51,"./_is-array":68}],160:[function(require,module,exports){
 'use strict';
 var addToUnscopables = require('./_add-to-unscopables');
 var step = require('./_iter-step');
@@ -24684,7 +39604,7 @@ addToUnscopables('keys');
 addToUnscopables('values');
 addToUnscopables('entries');
 
-},{"./_add-to-unscopables":18,"./_iter-define":70,"./_iter-step":72,"./_iterators":73,"./_to-iobject":131}],157:[function(require,module,exports){
+},{"./_add-to-unscopables":22,"./_iter-define":74,"./_iter-step":76,"./_iterators":77,"./_to-iobject":135}],161:[function(require,module,exports){
 'use strict'; // 22.1.3.13 Array.prototype.join(separator)
 
 var $export = require('./_export');
@@ -24699,7 +39619,7 @@ $export($export.P + $export.F * (require('./_iobject') != Object || !require('./
   }
 });
 
-},{"./_export":47,"./_iobject":62,"./_strict-method":119,"./_to-iobject":131}],158:[function(require,module,exports){
+},{"./_export":51,"./_iobject":66,"./_strict-method":123,"./_to-iobject":135}],162:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -24731,7 +39651,7 @@ $export($export.P + $export.F * (NEGATIVE_ZERO || !require('./_strict-method')($
   }
 });
 
-},{"./_export":47,"./_strict-method":119,"./_to-integer":130,"./_to-iobject":131,"./_to-length":132}],159:[function(require,module,exports){
+},{"./_export":51,"./_strict-method":123,"./_to-integer":134,"./_to-iobject":135,"./_to-length":136}],163:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -24747,7 +39667,7 @@ $export($export.P + $export.F * !require('./_strict-method')([].map, true), 'Arr
   }
 });
 
-},{"./_array-methods":26,"./_export":47,"./_strict-method":119}],160:[function(require,module,exports){
+},{"./_array-methods":30,"./_export":51,"./_strict-method":123}],164:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -24775,7 +39695,7 @@ $export($export.S + $export.F * require('./_fails')(function () {
   }
 });
 
-},{"./_create-property":38,"./_export":47,"./_fails":49}],161:[function(require,module,exports){
+},{"./_create-property":42,"./_export":51,"./_fails":53}],165:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -24791,7 +39711,7 @@ $export($export.P + $export.F * !require('./_strict-method')([].reduceRight, tru
   }
 });
 
-},{"./_array-reduce":27,"./_export":47,"./_strict-method":119}],162:[function(require,module,exports){
+},{"./_array-reduce":31,"./_export":51,"./_strict-method":123}],166:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -24807,7 +39727,7 @@ $export($export.P + $export.F * !require('./_strict-method')([].reduce, true), '
   }
 });
 
-},{"./_array-reduce":27,"./_export":47,"./_strict-method":119}],163:[function(require,module,exports){
+},{"./_array-reduce":31,"./_export":51,"./_strict-method":123}],167:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -24842,7 +39762,7 @@ $export($export.P + $export.F * require('./_fails')(function () {
   }
 });
 
-},{"./_cof":32,"./_export":47,"./_fails":49,"./_html":58,"./_to-absolute-index":128,"./_to-length":132}],164:[function(require,module,exports){
+},{"./_cof":36,"./_export":51,"./_fails":53,"./_html":62,"./_to-absolute-index":132,"./_to-length":136}],168:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -24858,7 +39778,7 @@ $export($export.P + $export.F * !require('./_strict-method')([].some, true), 'Ar
   }
 });
 
-},{"./_array-methods":26,"./_export":47,"./_strict-method":119}],165:[function(require,module,exports){
+},{"./_array-methods":30,"./_export":51,"./_strict-method":123}],169:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -24884,10 +39804,10 @@ $export($export.P + $export.F * (fails(function () {
   }
 });
 
-},{"./_a-function":16,"./_export":47,"./_fails":49,"./_strict-method":119,"./_to-object":133}],166:[function(require,module,exports){
+},{"./_a-function":20,"./_export":51,"./_fails":53,"./_strict-method":123,"./_to-object":137}],170:[function(require,module,exports){
 require('./_set-species')('Array');
 
-},{"./_set-species":114}],167:[function(require,module,exports){
+},{"./_set-species":118}],171:[function(require,module,exports){
 "use strict";
 
 // 20.3.3.1 / 15.9.4.4 Date.now()
@@ -24899,7 +39819,7 @@ $export($export.S, 'Date', {
   }
 });
 
-},{"./_export":47}],168:[function(require,module,exports){
+},{"./_export":51}],172:[function(require,module,exports){
 "use strict";
 
 // 20.3.4.36 / 15.9.5.43 Date.prototype.toISOString()
@@ -24912,7 +39832,7 @@ $export($export.P + $export.F * (Date.prototype.toISOString !== toISOString), 'D
   toISOString: toISOString
 });
 
-},{"./_date-to-iso-string":40,"./_export":47}],169:[function(require,module,exports){
+},{"./_date-to-iso-string":44,"./_export":51}],173:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -24936,13 +39856,13 @@ $export($export.P + $export.F * require('./_fails')(function () {
   }
 });
 
-},{"./_export":47,"./_fails":49,"./_to-object":133,"./_to-primitive":134}],170:[function(require,module,exports){
+},{"./_export":51,"./_fails":53,"./_to-object":137,"./_to-primitive":138}],174:[function(require,module,exports){
 var TO_PRIMITIVE = require('./_wks')('toPrimitive');
 var proto = Date.prototype;
 
 if (!(TO_PRIMITIVE in proto)) require('./_hide')(proto, TO_PRIMITIVE, require('./_date-to-primitive'));
 
-},{"./_date-to-primitive":41,"./_hide":57,"./_wks":143}],171:[function(require,module,exports){
+},{"./_date-to-primitive":45,"./_hide":61,"./_wks":147}],175:[function(require,module,exports){
 var DateProto = Date.prototype;
 var INVALID_DATE = 'Invalid Date';
 var TO_STRING = 'toString';
@@ -24956,7 +39876,7 @@ if (new Date(NaN) + '' != INVALID_DATE) {
   });
 }
 
-},{"./_redefine":106}],172:[function(require,module,exports){
+},{"./_redefine":110}],176:[function(require,module,exports){
 "use strict";
 
 // 19.2.3.2 / 15.3.4.5 Function.prototype.bind(thisArg, args...)
@@ -24966,7 +39886,7 @@ $export($export.P, 'Function', {
   bind: require('./_bind')
 });
 
-},{"./_bind":30,"./_export":47}],173:[function(require,module,exports){
+},{"./_bind":34,"./_export":51}],177:[function(require,module,exports){
 'use strict';
 var isObject = require('./_is-object');
 var getPrototypeOf = require('./_object-gpo');
@@ -24981,7 +39901,7 @@ if (!(HAS_INSTANCE in FunctionProto)) require('./_object-dp').f(FunctionProto, H
   return false;
 } });
 
-},{"./_is-object":66,"./_object-dp":86,"./_object-gpo":93,"./_wks":143}],174:[function(require,module,exports){
+},{"./_is-object":70,"./_object-dp":90,"./_object-gpo":97,"./_wks":147}],178:[function(require,module,exports){
 var dP = require('./_object-dp').f;
 var FProto = Function.prototype;
 var nameRE = /^\s*function ([^ (]*)/;
@@ -24999,7 +39919,7 @@ NAME in FProto || require('./_descriptors') && dP(FProto, NAME, {
   }
 });
 
-},{"./_descriptors":43,"./_object-dp":86}],175:[function(require,module,exports){
+},{"./_descriptors":47,"./_object-dp":90}],179:[function(require,module,exports){
 'use strict';
 var strong = require('./_collection-strong');
 var validate = require('./_validate-collection');
@@ -25020,7 +39940,7 @@ module.exports = require('./_collection')(MAP, function (get) {
   }
 }, strong, true);
 
-},{"./_collection":36,"./_collection-strong":33,"./_validate-collection":140}],176:[function(require,module,exports){
+},{"./_collection":40,"./_collection-strong":37,"./_validate-collection":144}],180:[function(require,module,exports){
 "use strict";
 
 // 20.2.2.3 Math.acosh(x)
@@ -25038,7 +39958,7 @@ $export($export.S + $export.F * !($acosh // V8 bug: https://code.google.com/p/v8
   }
 });
 
-},{"./_export":47,"./_math-log1p":77}],177:[function(require,module,exports){
+},{"./_export":51,"./_math-log1p":81}],181:[function(require,module,exports){
 "use strict";
 
 // 20.2.2.5 Math.asinh(x)
@@ -25055,7 +39975,7 @@ $export($export.S + $export.F * !($asinh && 1 / $asinh(0) > 0), 'Math', {
   asinh: asinh
 });
 
-},{"./_export":47}],178:[function(require,module,exports){
+},{"./_export":51}],182:[function(require,module,exports){
 "use strict";
 
 // 20.2.2.7 Math.atanh(x)
@@ -25069,7 +39989,7 @@ $export($export.S + $export.F * !($atanh && 1 / $atanh(-0) < 0), 'Math', {
   }
 });
 
-},{"./_export":47}],179:[function(require,module,exports){
+},{"./_export":51}],183:[function(require,module,exports){
 "use strict";
 
 // 20.2.2.9 Math.cbrt(x)
@@ -25083,7 +40003,7 @@ $export($export.S, 'Math', {
   }
 });
 
-},{"./_export":47,"./_math-sign":79}],180:[function(require,module,exports){
+},{"./_export":51,"./_math-sign":83}],184:[function(require,module,exports){
 "use strict";
 
 // 20.2.2.11 Math.clz32(x)
@@ -25095,7 +40015,7 @@ $export($export.S, 'Math', {
   }
 });
 
-},{"./_export":47}],181:[function(require,module,exports){
+},{"./_export":51}],185:[function(require,module,exports){
 "use strict";
 
 // 20.2.2.12 Math.cosh(x)
@@ -25108,7 +40028,7 @@ $export($export.S, 'Math', {
   }
 });
 
-},{"./_export":47}],182:[function(require,module,exports){
+},{"./_export":51}],186:[function(require,module,exports){
 "use strict";
 
 // 20.2.2.14 Math.expm1(x)
@@ -25120,7 +40040,7 @@ $export($export.S + $export.F * ($expm1 != Math.expm1), 'Math', {
   expm1: $expm1
 });
 
-},{"./_export":47,"./_math-expm1":75}],183:[function(require,module,exports){
+},{"./_export":51,"./_math-expm1":79}],187:[function(require,module,exports){
 "use strict";
 
 // 20.2.2.16 Math.fround(x)
@@ -25130,7 +40050,7 @@ $export($export.S, 'Math', {
   fround: require('./_math-fround')
 });
 
-},{"./_export":47,"./_math-fround":76}],184:[function(require,module,exports){
+},{"./_export":51,"./_math-fround":80}],188:[function(require,module,exports){
 "use strict";
 
 // 20.2.2.17 Math.hypot([value1[, value2[, … ]]])
@@ -25163,7 +40083,7 @@ $export($export.S, 'Math', {
   }
 });
 
-},{"./_export":47}],185:[function(require,module,exports){
+},{"./_export":51}],189:[function(require,module,exports){
 "use strict";
 
 // 20.2.2.18 Math.imul(x, y)
@@ -25184,7 +40104,7 @@ $export($export.S + $export.F * require('./_fails')(function () {
   }
 });
 
-},{"./_export":47,"./_fails":49}],186:[function(require,module,exports){
+},{"./_export":51,"./_fails":53}],190:[function(require,module,exports){
 "use strict";
 
 // 20.2.2.21 Math.log10(x)
@@ -25196,7 +40116,7 @@ $export($export.S, 'Math', {
   }
 });
 
-},{"./_export":47}],187:[function(require,module,exports){
+},{"./_export":51}],191:[function(require,module,exports){
 "use strict";
 
 // 20.2.2.20 Math.log1p(x)
@@ -25206,7 +40126,7 @@ $export($export.S, 'Math', {
   log1p: require('./_math-log1p')
 });
 
-},{"./_export":47,"./_math-log1p":77}],188:[function(require,module,exports){
+},{"./_export":51,"./_math-log1p":81}],192:[function(require,module,exports){
 "use strict";
 
 // 20.2.2.22 Math.log2(x)
@@ -25218,7 +40138,7 @@ $export($export.S, 'Math', {
   }
 });
 
-},{"./_export":47}],189:[function(require,module,exports){
+},{"./_export":51}],193:[function(require,module,exports){
 "use strict";
 
 // 20.2.2.28 Math.sign(x)
@@ -25228,7 +40148,7 @@ $export($export.S, 'Math', {
   sign: require('./_math-sign')
 });
 
-},{"./_export":47,"./_math-sign":79}],190:[function(require,module,exports){
+},{"./_export":51,"./_math-sign":83}],194:[function(require,module,exports){
 "use strict";
 
 // 20.2.2.30 Math.sinh(x)
@@ -25246,7 +40166,7 @@ $export($export.S + $export.F * require('./_fails')(function () {
   }
 });
 
-},{"./_export":47,"./_fails":49,"./_math-expm1":75}],191:[function(require,module,exports){
+},{"./_export":51,"./_fails":53,"./_math-expm1":79}],195:[function(require,module,exports){
 "use strict";
 
 // 20.2.2.33 Math.tanh(x)
@@ -25263,7 +40183,7 @@ $export($export.S, 'Math', {
   }
 });
 
-},{"./_export":47,"./_math-expm1":75}],192:[function(require,module,exports){
+},{"./_export":51,"./_math-expm1":79}],196:[function(require,module,exports){
 "use strict";
 
 // 20.2.2.34 Math.trunc(x)
@@ -25275,7 +40195,7 @@ $export($export.S, 'Math', {
   }
 });
 
-},{"./_export":47}],193:[function(require,module,exports){
+},{"./_export":51}],197:[function(require,module,exports){
 'use strict';
 var global = require('./_global');
 var has = require('./_has');
@@ -25346,7 +40266,7 @@ if (!$Number(' 0o1') || !$Number('0b1') || $Number('+0x1')) {
   require('./_redefine')(global, NUMBER, $Number);
 }
 
-},{"./_cof":32,"./_descriptors":43,"./_fails":49,"./_global":55,"./_has":56,"./_inherit-if-required":60,"./_object-create":85,"./_object-dp":86,"./_object-gopd":89,"./_object-gopn":91,"./_redefine":106,"./_string-trim":125,"./_to-primitive":134}],194:[function(require,module,exports){
+},{"./_cof":36,"./_descriptors":47,"./_fails":53,"./_global":59,"./_has":60,"./_inherit-if-required":64,"./_object-create":89,"./_object-dp":90,"./_object-gopd":93,"./_object-gopn":95,"./_redefine":110,"./_string-trim":129,"./_to-primitive":138}],198:[function(require,module,exports){
 "use strict";
 
 // 20.1.2.1 Number.EPSILON
@@ -25356,7 +40276,7 @@ $export($export.S, 'Number', {
   EPSILON: Math.pow(2, -52)
 });
 
-},{"./_export":47}],195:[function(require,module,exports){
+},{"./_export":51}],199:[function(require,module,exports){
 "use strict";
 
 // 20.1.2.2 Number.isFinite(number)
@@ -25370,7 +40290,7 @@ $export($export.S, 'Number', {
   }
 });
 
-},{"./_export":47,"./_global":55}],196:[function(require,module,exports){
+},{"./_export":51,"./_global":59}],200:[function(require,module,exports){
 "use strict";
 
 // 20.1.2.3 Number.isInteger(number)
@@ -25380,7 +40300,7 @@ $export($export.S, 'Number', {
   isInteger: require('./_is-integer')
 });
 
-},{"./_export":47,"./_is-integer":65}],197:[function(require,module,exports){
+},{"./_export":51,"./_is-integer":69}],201:[function(require,module,exports){
 "use strict";
 
 // 20.1.2.4 Number.isNaN(number)
@@ -25393,7 +40313,7 @@ $export($export.S, 'Number', {
   }
 });
 
-},{"./_export":47}],198:[function(require,module,exports){
+},{"./_export":51}],202:[function(require,module,exports){
 "use strict";
 
 // 20.1.2.5 Number.isSafeInteger(number)
@@ -25408,7 +40328,7 @@ $export($export.S, 'Number', {
   }
 });
 
-},{"./_export":47,"./_is-integer":65}],199:[function(require,module,exports){
+},{"./_export":51,"./_is-integer":69}],203:[function(require,module,exports){
 "use strict";
 
 // 20.1.2.6 Number.MAX_SAFE_INTEGER
@@ -25418,7 +40338,7 @@ $export($export.S, 'Number', {
   MAX_SAFE_INTEGER: 0x1fffffffffffff
 });
 
-},{"./_export":47}],200:[function(require,module,exports){
+},{"./_export":51}],204:[function(require,module,exports){
 "use strict";
 
 // 20.1.2.10 Number.MIN_SAFE_INTEGER
@@ -25428,7 +40348,7 @@ $export($export.S, 'Number', {
   MIN_SAFE_INTEGER: -0x1fffffffffffff
 });
 
-},{"./_export":47}],201:[function(require,module,exports){
+},{"./_export":51}],205:[function(require,module,exports){
 "use strict";
 
 var $export = require('./_export');
@@ -25440,7 +40360,7 @@ $export($export.S + $export.F * (Number.parseFloat != $parseFloat), 'Number', {
   parseFloat: $parseFloat
 });
 
-},{"./_export":47,"./_parse-float":100}],202:[function(require,module,exports){
+},{"./_export":51,"./_parse-float":104}],206:[function(require,module,exports){
 "use strict";
 
 var $export = require('./_export');
@@ -25452,7 +40372,7 @@ $export($export.S + $export.F * (Number.parseInt != $parseInt), 'Number', {
   parseInt: $parseInt
 });
 
-},{"./_export":47,"./_parse-int":101}],203:[function(require,module,exports){
+},{"./_export":51,"./_parse-int":105}],207:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -25591,7 +40511,7 @@ $export($export.P + $export.F * (!!$toFixed && (0.00008.toFixed(3) !== '0.000' |
   }
 });
 
-},{"./_a-number-value":17,"./_export":47,"./_fails":49,"./_string-repeat":124,"./_to-integer":130}],204:[function(require,module,exports){
+},{"./_a-number-value":21,"./_export":51,"./_fails":53,"./_string-repeat":128,"./_to-integer":134}],208:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -25614,7 +40534,7 @@ $export($export.P + $export.F * ($fails(function () {
   }
 });
 
-},{"./_a-number-value":17,"./_export":47,"./_fails":49}],205:[function(require,module,exports){
+},{"./_a-number-value":21,"./_export":51,"./_fails":53}],209:[function(require,module,exports){
 "use strict";
 
 // 19.1.3.1 Object.assign(target, source)
@@ -25624,7 +40544,7 @@ $export($export.S + $export.F, 'Object', {
   assign: require('./_object-assign')
 });
 
-},{"./_export":47,"./_object-assign":84}],206:[function(require,module,exports){
+},{"./_export":51,"./_object-assign":88}],210:[function(require,module,exports){
 "use strict";
 
 var $export = require('./_export'); // 19.1.2.2 / 15.2.3.5 Object.create(O [, Properties])
@@ -25634,7 +40554,7 @@ $export($export.S, 'Object', {
   create: require('./_object-create')
 });
 
-},{"./_export":47,"./_object-create":85}],207:[function(require,module,exports){
+},{"./_export":51,"./_object-create":89}],211:[function(require,module,exports){
 "use strict";
 
 var $export = require('./_export'); // 19.1.2.3 / 15.2.3.7 Object.defineProperties(O, Properties)
@@ -25644,7 +40564,7 @@ $export($export.S + $export.F * !require('./_descriptors'), 'Object', {
   defineProperties: require('./_object-dps')
 });
 
-},{"./_descriptors":43,"./_export":47,"./_object-dps":87}],208:[function(require,module,exports){
+},{"./_descriptors":47,"./_export":51,"./_object-dps":91}],212:[function(require,module,exports){
 "use strict";
 
 var $export = require('./_export'); // 19.1.2.4 / 15.2.3.6 Object.defineProperty(O, P, Attributes)
@@ -25654,7 +40574,7 @@ $export($export.S + $export.F * !require('./_descriptors'), 'Object', {
   defineProperty: require('./_object-dp').f
 });
 
-},{"./_descriptors":43,"./_export":47,"./_object-dp":86}],209:[function(require,module,exports){
+},{"./_descriptors":47,"./_export":51,"./_object-dp":90}],213:[function(require,module,exports){
 // 19.1.2.5 Object.freeze(O)
 var isObject = require('./_is-object');
 var meta = require('./_meta').onFreeze;
@@ -25665,7 +40585,7 @@ require('./_object-sap')('freeze', function ($freeze) {
   };
 });
 
-},{"./_is-object":66,"./_meta":80,"./_object-sap":97}],210:[function(require,module,exports){
+},{"./_is-object":70,"./_meta":84,"./_object-sap":101}],214:[function(require,module,exports){
 // 19.1.2.6 Object.getOwnPropertyDescriptor(O, P)
 var toIObject = require('./_to-iobject');
 var $getOwnPropertyDescriptor = require('./_object-gopd').f;
@@ -25676,13 +40596,13 @@ require('./_object-sap')('getOwnPropertyDescriptor', function () {
   };
 });
 
-},{"./_object-gopd":89,"./_object-sap":97,"./_to-iobject":131}],211:[function(require,module,exports){
+},{"./_object-gopd":93,"./_object-sap":101,"./_to-iobject":135}],215:[function(require,module,exports){
 // 19.1.2.7 Object.getOwnPropertyNames(O)
 require('./_object-sap')('getOwnPropertyNames', function () {
   return require('./_object-gopn-ext').f;
 });
 
-},{"./_object-gopn-ext":90,"./_object-sap":97}],212:[function(require,module,exports){
+},{"./_object-gopn-ext":94,"./_object-sap":101}],216:[function(require,module,exports){
 // 19.1.2.9 Object.getPrototypeOf(O)
 var toObject = require('./_to-object');
 var $getPrototypeOf = require('./_object-gpo');
@@ -25693,7 +40613,7 @@ require('./_object-sap')('getPrototypeOf', function () {
   };
 });
 
-},{"./_object-gpo":93,"./_object-sap":97,"./_to-object":133}],213:[function(require,module,exports){
+},{"./_object-gpo":97,"./_object-sap":101,"./_to-object":137}],217:[function(require,module,exports){
 // 19.1.2.11 Object.isExtensible(O)
 var isObject = require('./_is-object');
 
@@ -25703,7 +40623,7 @@ require('./_object-sap')('isExtensible', function ($isExtensible) {
   };
 });
 
-},{"./_is-object":66,"./_object-sap":97}],214:[function(require,module,exports){
+},{"./_is-object":70,"./_object-sap":101}],218:[function(require,module,exports){
 // 19.1.2.12 Object.isFrozen(O)
 var isObject = require('./_is-object');
 
@@ -25713,7 +40633,7 @@ require('./_object-sap')('isFrozen', function ($isFrozen) {
   };
 });
 
-},{"./_is-object":66,"./_object-sap":97}],215:[function(require,module,exports){
+},{"./_is-object":70,"./_object-sap":101}],219:[function(require,module,exports){
 // 19.1.2.13 Object.isSealed(O)
 var isObject = require('./_is-object');
 
@@ -25723,7 +40643,7 @@ require('./_object-sap')('isSealed', function ($isSealed) {
   };
 });
 
-},{"./_is-object":66,"./_object-sap":97}],216:[function(require,module,exports){
+},{"./_is-object":70,"./_object-sap":101}],220:[function(require,module,exports){
 "use strict";
 
 // 19.1.3.10 Object.is(value1, value2)
@@ -25733,7 +40653,7 @@ $export($export.S, 'Object', {
   is: require('./_same-value')
 });
 
-},{"./_export":47,"./_same-value":110}],217:[function(require,module,exports){
+},{"./_export":51,"./_same-value":114}],221:[function(require,module,exports){
 // 19.1.2.14 Object.keys(O)
 var toObject = require('./_to-object');
 var $keys = require('./_object-keys');
@@ -25744,7 +40664,7 @@ require('./_object-sap')('keys', function () {
   };
 });
 
-},{"./_object-keys":95,"./_object-sap":97,"./_to-object":133}],218:[function(require,module,exports){
+},{"./_object-keys":99,"./_object-sap":101,"./_to-object":137}],222:[function(require,module,exports){
 // 19.1.2.15 Object.preventExtensions(O)
 var isObject = require('./_is-object');
 var meta = require('./_meta').onFreeze;
@@ -25755,7 +40675,7 @@ require('./_object-sap')('preventExtensions', function ($preventExtensions) {
   };
 });
 
-},{"./_is-object":66,"./_meta":80,"./_object-sap":97}],219:[function(require,module,exports){
+},{"./_is-object":70,"./_meta":84,"./_object-sap":101}],223:[function(require,module,exports){
 // 19.1.2.17 Object.seal(O)
 var isObject = require('./_is-object');
 var meta = require('./_meta').onFreeze;
@@ -25766,7 +40686,7 @@ require('./_object-sap')('seal', function ($seal) {
   };
 });
 
-},{"./_is-object":66,"./_meta":80,"./_object-sap":97}],220:[function(require,module,exports){
+},{"./_is-object":70,"./_meta":84,"./_object-sap":101}],224:[function(require,module,exports){
 "use strict";
 
 // 19.1.3.19 Object.setPrototypeOf(O, proto)
@@ -25776,7 +40696,7 @@ $export($export.S, 'Object', {
   setPrototypeOf: require('./_set-proto').set
 });
 
-},{"./_export":47,"./_set-proto":113}],221:[function(require,module,exports){
+},{"./_export":51,"./_set-proto":117}],225:[function(require,module,exports){
 'use strict';
 // 19.1.3.6 Object.prototype.toString()
 var classof = require('./_classof');
@@ -25788,7 +40708,7 @@ if (test + '' != '[object z]') {
   }, true);
 }
 
-},{"./_classof":31,"./_redefine":106,"./_wks":143}],222:[function(require,module,exports){
+},{"./_classof":35,"./_redefine":110,"./_wks":147}],226:[function(require,module,exports){
 "use strict";
 
 var $export = require('./_export');
@@ -25800,7 +40720,7 @@ $export($export.G + $export.F * (parseFloat != $parseFloat), {
   parseFloat: $parseFloat
 });
 
-},{"./_export":47,"./_parse-float":100}],223:[function(require,module,exports){
+},{"./_export":51,"./_parse-float":104}],227:[function(require,module,exports){
 "use strict";
 
 var $export = require('./_export');
@@ -25812,7 +40732,7 @@ $export($export.G + $export.F * (parseInt != $parseInt), {
   parseInt: $parseInt
 });
 
-},{"./_export":47,"./_parse-int":101}],224:[function(require,module,exports){
+},{"./_export":51,"./_parse-int":105}],228:[function(require,module,exports){
 'use strict';
 
 var LIBRARY = require('./_library');
@@ -26168,7 +41088,7 @@ $export($export.S + $export.F * !(USE_NATIVE && require('./_iter-detect')(functi
   }
 });
 
-},{"./_a-function":16,"./_an-instance":20,"./_classof":31,"./_core":37,"./_ctx":39,"./_export":47,"./_for-of":53,"./_global":55,"./_is-object":66,"./_iter-detect":71,"./_library":74,"./_microtask":82,"./_new-promise-capability":83,"./_perform":102,"./_promise-resolve":103,"./_redefine-all":105,"./_set-species":114,"./_set-to-string-tag":115,"./_species-constructor":118,"./_task":127,"./_user-agent":139,"./_wks":143}],225:[function(require,module,exports){
+},{"./_a-function":20,"./_an-instance":24,"./_classof":35,"./_core":41,"./_ctx":43,"./_export":51,"./_for-of":57,"./_global":59,"./_is-object":70,"./_iter-detect":75,"./_library":78,"./_microtask":86,"./_new-promise-capability":87,"./_perform":106,"./_promise-resolve":107,"./_redefine-all":109,"./_set-species":118,"./_set-to-string-tag":119,"./_species-constructor":122,"./_task":131,"./_user-agent":143,"./_wks":147}],229:[function(require,module,exports){
 "use strict";
 
 // 26.1.1 Reflect.apply(target, thisArgument, argumentsList)
@@ -26193,7 +41113,7 @@ $export($export.S + $export.F * !require('./_fails')(function () {
   }
 });
 
-},{"./_a-function":16,"./_an-object":21,"./_export":47,"./_fails":49,"./_global":55}],226:[function(require,module,exports){
+},{"./_a-function":20,"./_an-object":25,"./_export":51,"./_fails":53,"./_global":59}],230:[function(require,module,exports){
 "use strict";
 
 // 26.1.2 Reflect.construct(target, argumentsList [, newTarget])
@@ -26270,7 +41190,7 @@ $export($export.S + $export.F * (NEW_TARGET_BUG || ARGS_BUG), 'Reflect', {
   }
 });
 
-},{"./_a-function":16,"./_an-object":21,"./_bind":30,"./_export":47,"./_fails":49,"./_global":55,"./_is-object":66,"./_object-create":85}],227:[function(require,module,exports){
+},{"./_a-function":20,"./_an-object":25,"./_bind":34,"./_export":51,"./_fails":53,"./_global":59,"./_is-object":70,"./_object-create":89}],231:[function(require,module,exports){
 "use strict";
 
 // 26.1.3 Reflect.defineProperty(target, propertyKey, attributes)
@@ -26305,7 +41225,7 @@ $export($export.S + $export.F * require('./_fails')(function () {
   }
 });
 
-},{"./_an-object":21,"./_export":47,"./_fails":49,"./_object-dp":86,"./_to-primitive":134}],228:[function(require,module,exports){
+},{"./_an-object":25,"./_export":51,"./_fails":53,"./_object-dp":90,"./_to-primitive":138}],232:[function(require,module,exports){
 "use strict";
 
 // 26.1.4 Reflect.deleteProperty(target, propertyKey)
@@ -26322,7 +41242,7 @@ $export($export.S, 'Reflect', {
   }
 });
 
-},{"./_an-object":21,"./_export":47,"./_object-gopd":89}],229:[function(require,module,exports){
+},{"./_an-object":25,"./_export":51,"./_object-gopd":93}],233:[function(require,module,exports){
 'use strict'; // 26.1.5 Reflect.enumerate(target)
 
 var $export = require('./_export');
@@ -26365,7 +41285,7 @@ $export($export.S, 'Reflect', {
   }
 });
 
-},{"./_an-object":21,"./_export":47,"./_iter-create":69}],230:[function(require,module,exports){
+},{"./_an-object":25,"./_export":51,"./_iter-create":73}],234:[function(require,module,exports){
 "use strict";
 
 // 26.1.7 Reflect.getOwnPropertyDescriptor(target, propertyKey)
@@ -26381,7 +41301,7 @@ $export($export.S, 'Reflect', {
   }
 });
 
-},{"./_an-object":21,"./_export":47,"./_object-gopd":89}],231:[function(require,module,exports){
+},{"./_an-object":25,"./_export":51,"./_object-gopd":93}],235:[function(require,module,exports){
 "use strict";
 
 // 26.1.8 Reflect.getPrototypeOf(target)
@@ -26397,7 +41317,7 @@ $export($export.S, 'Reflect', {
   }
 });
 
-},{"./_an-object":21,"./_export":47,"./_object-gpo":93}],232:[function(require,module,exports){
+},{"./_an-object":25,"./_export":51,"./_object-gpo":97}],236:[function(require,module,exports){
 "use strict";
 
 // 26.1.6 Reflect.get(target, propertyKey [, receiver])
@@ -26427,7 +41347,7 @@ $export($export.S, 'Reflect', {
   get: get
 });
 
-},{"./_an-object":21,"./_export":47,"./_has":56,"./_is-object":66,"./_object-gopd":89,"./_object-gpo":93}],233:[function(require,module,exports){
+},{"./_an-object":25,"./_export":51,"./_has":60,"./_is-object":70,"./_object-gopd":93,"./_object-gpo":97}],237:[function(require,module,exports){
 "use strict";
 
 // 26.1.9 Reflect.has(target, propertyKey)
@@ -26439,7 +41359,7 @@ $export($export.S, 'Reflect', {
   }
 });
 
-},{"./_export":47}],234:[function(require,module,exports){
+},{"./_export":51}],238:[function(require,module,exports){
 "use strict";
 
 // 26.1.10 Reflect.isExtensible(target)
@@ -26455,7 +41375,7 @@ $export($export.S, 'Reflect', {
   }
 });
 
-},{"./_an-object":21,"./_export":47}],235:[function(require,module,exports){
+},{"./_an-object":25,"./_export":51}],239:[function(require,module,exports){
 "use strict";
 
 // 26.1.11 Reflect.ownKeys(target)
@@ -26465,7 +41385,7 @@ $export($export.S, 'Reflect', {
   ownKeys: require('./_own-keys')
 });
 
-},{"./_export":47,"./_own-keys":99}],236:[function(require,module,exports){
+},{"./_export":51,"./_own-keys":103}],240:[function(require,module,exports){
 "use strict";
 
 // 26.1.12 Reflect.preventExtensions(target)
@@ -26487,7 +41407,7 @@ $export($export.S, 'Reflect', {
   }
 });
 
-},{"./_an-object":21,"./_export":47}],237:[function(require,module,exports){
+},{"./_an-object":25,"./_export":51}],241:[function(require,module,exports){
 "use strict";
 
 // 26.1.14 Reflect.setPrototypeOf(target, proto)
@@ -26508,7 +41428,7 @@ if (setProto) $export($export.S, 'Reflect', {
   }
 });
 
-},{"./_export":47,"./_set-proto":113}],238:[function(require,module,exports){
+},{"./_export":51,"./_set-proto":117}],242:[function(require,module,exports){
 "use strict";
 
 // 26.1.13 Reflect.set(target, propertyKey, V [, receiver])
@@ -26562,7 +41482,7 @@ $export($export.S, 'Reflect', {
   set: set
 });
 
-},{"./_an-object":21,"./_export":47,"./_has":56,"./_is-object":66,"./_object-dp":86,"./_object-gopd":89,"./_object-gpo":93,"./_property-desc":104}],239:[function(require,module,exports){
+},{"./_an-object":25,"./_export":51,"./_has":60,"./_is-object":70,"./_object-dp":90,"./_object-gopd":93,"./_object-gpo":97,"./_property-desc":108}],243:[function(require,module,exports){
 var global = require('./_global');
 var inheritIfRequired = require('./_inherit-if-required');
 var dP = require('./_object-dp').f;
@@ -26607,7 +41527,7 @@ if (require('./_descriptors') && (!CORRECT_NEW || require('./_fails')(function (
 
 require('./_set-species')('RegExp');
 
-},{"./_descriptors":43,"./_fails":49,"./_flags":51,"./_global":55,"./_inherit-if-required":60,"./_is-regexp":67,"./_object-dp":86,"./_object-gopn":91,"./_redefine":106,"./_set-species":114,"./_wks":143}],240:[function(require,module,exports){
+},{"./_descriptors":47,"./_fails":53,"./_flags":55,"./_global":59,"./_inherit-if-required":64,"./_is-regexp":71,"./_object-dp":90,"./_object-gopn":95,"./_redefine":110,"./_set-species":118,"./_wks":147}],244:[function(require,module,exports){
 'use strict';
 var regexpExec = require('./_regexp-exec');
 require('./_export')({
@@ -26618,14 +41538,14 @@ require('./_export')({
   exec: regexpExec
 });
 
-},{"./_export":47,"./_regexp-exec":108}],241:[function(require,module,exports){
+},{"./_export":51,"./_regexp-exec":112}],245:[function(require,module,exports){
 // 21.2.5.3 get RegExp.prototype.flags()
 if (require('./_descriptors') && /./g.flags != 'g') require('./_object-dp').f(RegExp.prototype, 'flags', {
   configurable: true,
   get: require('./_flags')
 });
 
-},{"./_descriptors":43,"./_flags":51,"./_object-dp":86}],242:[function(require,module,exports){
+},{"./_descriptors":47,"./_flags":55,"./_object-dp":90}],246:[function(require,module,exports){
 'use strict';
 
 var anObject = require('./_an-object');
@@ -26667,7 +41587,7 @@ require('./_fix-re-wks')('match', 1, function (defined, MATCH, $match, maybeCall
   ];
 });
 
-},{"./_advance-string-index":19,"./_an-object":21,"./_fix-re-wks":50,"./_regexp-exec-abstract":107,"./_to-length":132}],243:[function(require,module,exports){
+},{"./_advance-string-index":23,"./_an-object":25,"./_fix-re-wks":54,"./_regexp-exec-abstract":111,"./_to-length":136}],247:[function(require,module,exports){
 'use strict';
 
 var anObject = require('./_an-object');
@@ -26787,7 +41707,7 @@ require('./_fix-re-wks')('replace', 2, function (defined, REPLACE, $replace, may
   }
 });
 
-},{"./_advance-string-index":19,"./_an-object":21,"./_fix-re-wks":50,"./_regexp-exec-abstract":107,"./_to-integer":130,"./_to-length":132,"./_to-object":133}],244:[function(require,module,exports){
+},{"./_advance-string-index":23,"./_an-object":25,"./_fix-re-wks":54,"./_regexp-exec-abstract":111,"./_to-integer":134,"./_to-length":136,"./_to-object":137}],248:[function(require,module,exports){
 'use strict';
 
 var anObject = require('./_an-object');
@@ -26820,7 +41740,7 @@ require('./_fix-re-wks')('search', 1, function (defined, SEARCH, $search, maybeC
   ];
 });
 
-},{"./_an-object":21,"./_fix-re-wks":50,"./_regexp-exec-abstract":107,"./_same-value":110}],245:[function(require,module,exports){
+},{"./_an-object":25,"./_fix-re-wks":54,"./_regexp-exec-abstract":111,"./_same-value":114}],249:[function(require,module,exports){
 'use strict';
 
 var isRegExp = require('./_is-regexp');
@@ -26956,7 +41876,7 @@ require('./_fix-re-wks')('split', 2, function (defined, SPLIT, $split, maybeCall
   ];
 });
 
-},{"./_advance-string-index":19,"./_an-object":21,"./_fails":49,"./_fix-re-wks":50,"./_is-regexp":67,"./_regexp-exec":108,"./_regexp-exec-abstract":107,"./_species-constructor":118,"./_to-length":132}],246:[function(require,module,exports){
+},{"./_advance-string-index":23,"./_an-object":25,"./_fails":53,"./_fix-re-wks":54,"./_is-regexp":71,"./_regexp-exec":112,"./_regexp-exec-abstract":111,"./_species-constructor":122,"./_to-length":136}],250:[function(require,module,exports){
 'use strict';
 require('./es6.regexp.flags');
 var anObject = require('./_an-object');
@@ -26983,7 +41903,7 @@ if (require('./_fails')(function () { return $toString.call({ source: 'a', flags
   });
 }
 
-},{"./_an-object":21,"./_descriptors":43,"./_fails":49,"./_flags":51,"./_redefine":106,"./es6.regexp.flags":241}],247:[function(require,module,exports){
+},{"./_an-object":25,"./_descriptors":47,"./_fails":53,"./_flags":55,"./_redefine":110,"./es6.regexp.flags":245}],251:[function(require,module,exports){
 'use strict';
 var strong = require('./_collection-strong');
 var validate = require('./_validate-collection');
@@ -26999,7 +41919,7 @@ module.exports = require('./_collection')(SET, function (get) {
   }
 }, strong);
 
-},{"./_collection":36,"./_collection-strong":33,"./_validate-collection":140}],248:[function(require,module,exports){
+},{"./_collection":40,"./_collection-strong":37,"./_validate-collection":144}],252:[function(require,module,exports){
 'use strict';
 // B.2.3.2 String.prototype.anchor(name)
 require('./_string-html')('anchor', function (createHTML) {
@@ -27008,7 +41928,7 @@ require('./_string-html')('anchor', function (createHTML) {
   };
 });
 
-},{"./_string-html":122}],249:[function(require,module,exports){
+},{"./_string-html":126}],253:[function(require,module,exports){
 'use strict';
 // B.2.3.3 String.prototype.big()
 require('./_string-html')('big', function (createHTML) {
@@ -27017,7 +41937,7 @@ require('./_string-html')('big', function (createHTML) {
   };
 });
 
-},{"./_string-html":122}],250:[function(require,module,exports){
+},{"./_string-html":126}],254:[function(require,module,exports){
 'use strict';
 // B.2.3.4 String.prototype.blink()
 require('./_string-html')('blink', function (createHTML) {
@@ -27026,7 +41946,7 @@ require('./_string-html')('blink', function (createHTML) {
   };
 });
 
-},{"./_string-html":122}],251:[function(require,module,exports){
+},{"./_string-html":126}],255:[function(require,module,exports){
 'use strict';
 // B.2.3.5 String.prototype.bold()
 require('./_string-html')('bold', function (createHTML) {
@@ -27035,7 +41955,7 @@ require('./_string-html')('bold', function (createHTML) {
   };
 });
 
-},{"./_string-html":122}],252:[function(require,module,exports){
+},{"./_string-html":126}],256:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -27049,7 +41969,7 @@ $export($export.P, 'String', {
   }
 });
 
-},{"./_export":47,"./_string-at":120}],253:[function(require,module,exports){
+},{"./_export":51,"./_string-at":124}],257:[function(require,module,exports){
 // 21.1.3.6 String.prototype.endsWith(searchString [, endPosition])
 'use strict';
 
@@ -27074,7 +41994,7 @@ $export($export.P + $export.F * require('./_fails-is-regexp')(ENDS_WITH), 'Strin
   }
 });
 
-},{"./_export":47,"./_fails-is-regexp":48,"./_string-context":121,"./_to-length":132}],254:[function(require,module,exports){
+},{"./_export":51,"./_fails-is-regexp":52,"./_string-context":125,"./_to-length":136}],258:[function(require,module,exports){
 'use strict';
 // B.2.3.6 String.prototype.fixed()
 require('./_string-html')('fixed', function (createHTML) {
@@ -27083,7 +42003,7 @@ require('./_string-html')('fixed', function (createHTML) {
   };
 });
 
-},{"./_string-html":122}],255:[function(require,module,exports){
+},{"./_string-html":126}],259:[function(require,module,exports){
 'use strict';
 // B.2.3.7 String.prototype.fontcolor(color)
 require('./_string-html')('fontcolor', function (createHTML) {
@@ -27092,7 +42012,7 @@ require('./_string-html')('fontcolor', function (createHTML) {
   };
 });
 
-},{"./_string-html":122}],256:[function(require,module,exports){
+},{"./_string-html":126}],260:[function(require,module,exports){
 'use strict';
 // B.2.3.8 String.prototype.fontsize(size)
 require('./_string-html')('fontsize', function (createHTML) {
@@ -27101,7 +42021,7 @@ require('./_string-html')('fontsize', function (createHTML) {
   };
 });
 
-},{"./_string-html":122}],257:[function(require,module,exports){
+},{"./_string-html":126}],261:[function(require,module,exports){
 "use strict";
 
 var $export = require('./_export');
@@ -27130,7 +42050,7 @@ $export($export.S + $export.F * (!!$fromCodePoint && $fromCodePoint.length != 1)
   }
 });
 
-},{"./_export":47,"./_to-absolute-index":128}],258:[function(require,module,exports){
+},{"./_export":51,"./_to-absolute-index":132}],262:[function(require,module,exports){
 // 21.1.3.7 String.prototype.includes(searchString, position = 0)
 'use strict';
 
@@ -27147,7 +42067,7 @@ $export($export.P + $export.F * require('./_fails-is-regexp')(INCLUDES), 'String
   }
 });
 
-},{"./_export":47,"./_fails-is-regexp":48,"./_string-context":121}],259:[function(require,module,exports){
+},{"./_export":51,"./_fails-is-regexp":52,"./_string-context":125}],263:[function(require,module,exports){
 'use strict';
 // B.2.3.9 String.prototype.italics()
 require('./_string-html')('italics', function (createHTML) {
@@ -27156,7 +42076,7 @@ require('./_string-html')('italics', function (createHTML) {
   };
 });
 
-},{"./_string-html":122}],260:[function(require,module,exports){
+},{"./_string-html":126}],264:[function(require,module,exports){
 'use strict';
 var $at = require('./_string-at')(true);
 
@@ -27175,7 +42095,7 @@ require('./_iter-define')(String, 'String', function (iterated) {
   return { value: point, done: false };
 });
 
-},{"./_iter-define":70,"./_string-at":120}],261:[function(require,module,exports){
+},{"./_iter-define":74,"./_string-at":124}],265:[function(require,module,exports){
 'use strict';
 // B.2.3.10 String.prototype.link(url)
 require('./_string-html')('link', function (createHTML) {
@@ -27184,7 +42104,7 @@ require('./_string-html')('link', function (createHTML) {
   };
 });
 
-},{"./_string-html":122}],262:[function(require,module,exports){
+},{"./_string-html":126}],266:[function(require,module,exports){
 "use strict";
 
 var $export = require('./_export');
@@ -27211,7 +42131,7 @@ $export($export.S, 'String', {
   }
 });
 
-},{"./_export":47,"./_to-iobject":131,"./_to-length":132}],263:[function(require,module,exports){
+},{"./_export":51,"./_to-iobject":135,"./_to-length":136}],267:[function(require,module,exports){
 "use strict";
 
 var $export = require('./_export');
@@ -27221,7 +42141,7 @@ $export($export.P, 'String', {
   repeat: require('./_string-repeat')
 });
 
-},{"./_export":47,"./_string-repeat":124}],264:[function(require,module,exports){
+},{"./_export":51,"./_string-repeat":128}],268:[function(require,module,exports){
 'use strict';
 // B.2.3.11 String.prototype.small()
 require('./_string-html')('small', function (createHTML) {
@@ -27230,7 +42150,7 @@ require('./_string-html')('small', function (createHTML) {
   };
 });
 
-},{"./_string-html":122}],265:[function(require,module,exports){
+},{"./_string-html":126}],269:[function(require,module,exports){
 // 21.1.3.18 String.prototype.startsWith(searchString [, position ])
 'use strict';
 
@@ -27253,7 +42173,7 @@ $export($export.P + $export.F * require('./_fails-is-regexp')(STARTS_WITH), 'Str
   }
 });
 
-},{"./_export":47,"./_fails-is-regexp":48,"./_string-context":121,"./_to-length":132}],266:[function(require,module,exports){
+},{"./_export":51,"./_fails-is-regexp":52,"./_string-context":125,"./_to-length":136}],270:[function(require,module,exports){
 'use strict';
 // B.2.3.12 String.prototype.strike()
 require('./_string-html')('strike', function (createHTML) {
@@ -27262,7 +42182,7 @@ require('./_string-html')('strike', function (createHTML) {
   };
 });
 
-},{"./_string-html":122}],267:[function(require,module,exports){
+},{"./_string-html":126}],271:[function(require,module,exports){
 'use strict';
 // B.2.3.13 String.prototype.sub()
 require('./_string-html')('sub', function (createHTML) {
@@ -27271,7 +42191,7 @@ require('./_string-html')('sub', function (createHTML) {
   };
 });
 
-},{"./_string-html":122}],268:[function(require,module,exports){
+},{"./_string-html":126}],272:[function(require,module,exports){
 'use strict';
 // B.2.3.14 String.prototype.sup()
 require('./_string-html')('sup', function (createHTML) {
@@ -27280,7 +42200,7 @@ require('./_string-html')('sup', function (createHTML) {
   };
 });
 
-},{"./_string-html":122}],269:[function(require,module,exports){
+},{"./_string-html":126}],273:[function(require,module,exports){
 'use strict';
 // 21.1.3.25 String.prototype.trim()
 require('./_string-trim')('trim', function ($trim) {
@@ -27289,7 +42209,7 @@ require('./_string-trim')('trim', function ($trim) {
   };
 });
 
-},{"./_string-trim":125}],270:[function(require,module,exports){
+},{"./_string-trim":129}],274:[function(require,module,exports){
 'use strict'; // ECMAScript 6 symbols shim
 
 var global = require('./_global');
@@ -27601,7 +42521,7 @@ setToStringTag(Math, 'Math', true); // 24.3.3 JSON[@@toStringTag]
 
 setToStringTag(global.JSON, 'JSON', true);
 
-},{"./_an-object":21,"./_descriptors":43,"./_enum-keys":46,"./_export":47,"./_fails":49,"./_global":55,"./_has":56,"./_hide":57,"./_is-array":64,"./_is-object":66,"./_library":74,"./_meta":80,"./_object-create":85,"./_object-dp":86,"./_object-gopd":89,"./_object-gopn":91,"./_object-gopn-ext":90,"./_object-gops":92,"./_object-keys":95,"./_object-pie":96,"./_property-desc":104,"./_redefine":106,"./_set-to-string-tag":115,"./_shared":117,"./_to-iobject":131,"./_to-object":133,"./_to-primitive":134,"./_uid":138,"./_wks":143,"./_wks-define":141,"./_wks-ext":142}],271:[function(require,module,exports){
+},{"./_an-object":25,"./_descriptors":47,"./_enum-keys":50,"./_export":51,"./_fails":53,"./_global":59,"./_has":60,"./_hide":61,"./_is-array":68,"./_is-object":70,"./_library":78,"./_meta":84,"./_object-create":89,"./_object-dp":90,"./_object-gopd":93,"./_object-gopn":95,"./_object-gopn-ext":94,"./_object-gops":96,"./_object-keys":99,"./_object-pie":100,"./_property-desc":108,"./_redefine":110,"./_set-to-string-tag":119,"./_shared":121,"./_to-iobject":135,"./_to-object":137,"./_to-primitive":138,"./_uid":142,"./_wks":147,"./_wks-define":145,"./_wks-ext":146}],275:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -27662,7 +42582,7 @@ $export($export.P + $export.U + $export.F * require('./_fails')(function () {
 
 require('./_set-species')(ARRAY_BUFFER);
 
-},{"./_an-object":21,"./_export":47,"./_fails":49,"./_global":55,"./_is-object":66,"./_set-species":114,"./_species-constructor":118,"./_to-absolute-index":128,"./_to-length":132,"./_typed":137,"./_typed-buffer":136}],272:[function(require,module,exports){
+},{"./_an-object":25,"./_export":51,"./_fails":53,"./_global":59,"./_is-object":70,"./_set-species":118,"./_species-constructor":122,"./_to-absolute-index":132,"./_to-length":136,"./_typed":141,"./_typed-buffer":140}],276:[function(require,module,exports){
 "use strict";
 
 var $export = require('./_export');
@@ -27671,70 +42591,70 @@ $export($export.G + $export.W + $export.F * !require('./_typed').ABV, {
   DataView: require('./_typed-buffer').DataView
 });
 
-},{"./_export":47,"./_typed":137,"./_typed-buffer":136}],273:[function(require,module,exports){
+},{"./_export":51,"./_typed":141,"./_typed-buffer":140}],277:[function(require,module,exports){
 require('./_typed-array')('Float32', 4, function (init) {
   return function Float32Array(data, byteOffset, length) {
     return init(this, data, byteOffset, length);
   };
 });
 
-},{"./_typed-array":135}],274:[function(require,module,exports){
+},{"./_typed-array":139}],278:[function(require,module,exports){
 require('./_typed-array')('Float64', 8, function (init) {
   return function Float64Array(data, byteOffset, length) {
     return init(this, data, byteOffset, length);
   };
 });
 
-},{"./_typed-array":135}],275:[function(require,module,exports){
+},{"./_typed-array":139}],279:[function(require,module,exports){
 require('./_typed-array')('Int16', 2, function (init) {
   return function Int16Array(data, byteOffset, length) {
     return init(this, data, byteOffset, length);
   };
 });
 
-},{"./_typed-array":135}],276:[function(require,module,exports){
+},{"./_typed-array":139}],280:[function(require,module,exports){
 require('./_typed-array')('Int32', 4, function (init) {
   return function Int32Array(data, byteOffset, length) {
     return init(this, data, byteOffset, length);
   };
 });
 
-},{"./_typed-array":135}],277:[function(require,module,exports){
+},{"./_typed-array":139}],281:[function(require,module,exports){
 require('./_typed-array')('Int8', 1, function (init) {
   return function Int8Array(data, byteOffset, length) {
     return init(this, data, byteOffset, length);
   };
 });
 
-},{"./_typed-array":135}],278:[function(require,module,exports){
+},{"./_typed-array":139}],282:[function(require,module,exports){
 require('./_typed-array')('Uint16', 2, function (init) {
   return function Uint16Array(data, byteOffset, length) {
     return init(this, data, byteOffset, length);
   };
 });
 
-},{"./_typed-array":135}],279:[function(require,module,exports){
+},{"./_typed-array":139}],283:[function(require,module,exports){
 require('./_typed-array')('Uint32', 4, function (init) {
   return function Uint32Array(data, byteOffset, length) {
     return init(this, data, byteOffset, length);
   };
 });
 
-},{"./_typed-array":135}],280:[function(require,module,exports){
+},{"./_typed-array":139}],284:[function(require,module,exports){
 require('./_typed-array')('Uint8', 1, function (init) {
   return function Uint8Array(data, byteOffset, length) {
     return init(this, data, byteOffset, length);
   };
 });
 
-},{"./_typed-array":135}],281:[function(require,module,exports){
+},{"./_typed-array":139}],285:[function(require,module,exports){
 require('./_typed-array')('Uint8', 1, function (init) {
   return function Uint8ClampedArray(data, byteOffset, length) {
     return init(this, data, byteOffset, length);
   };
 }, true);
 
-},{"./_typed-array":135}],282:[function(require,module,exports){
+},{"./_typed-array":139}],286:[function(require,module,exports){
 'use strict';
 var global = require('./_global');
 var each = require('./_array-methods')(0);
@@ -27796,7 +42716,7 @@ if (NATIVE_WEAK_MAP && IS_IE11) {
   });
 }
 
-},{"./_array-methods":26,"./_collection":36,"./_collection-weak":35,"./_global":55,"./_is-object":66,"./_meta":80,"./_object-assign":84,"./_redefine":106,"./_validate-collection":140}],283:[function(require,module,exports){
+},{"./_array-methods":30,"./_collection":40,"./_collection-weak":39,"./_global":59,"./_is-object":70,"./_meta":84,"./_object-assign":88,"./_redefine":110,"./_validate-collection":144}],287:[function(require,module,exports){
 'use strict';
 var weak = require('./_collection-weak');
 var validate = require('./_validate-collection');
@@ -27812,7 +42732,7 @@ require('./_collection')(WEAK_SET, function (get) {
   }
 }, weak, false, true);
 
-},{"./_collection":36,"./_collection-weak":35,"./_validate-collection":140}],284:[function(require,module,exports){
+},{"./_collection":40,"./_collection-weak":39,"./_validate-collection":144}],288:[function(require,module,exports){
 'use strict'; // https://tc39.github.io/proposal-flatMap/#sec-Array.prototype.flatMap
 
 var $export = require('./_export');
@@ -27843,7 +42763,7 @@ $export($export.P, 'Array', {
 
 require('./_add-to-unscopables')('flatMap');
 
-},{"./_a-function":16,"./_add-to-unscopables":18,"./_array-species-create":29,"./_export":47,"./_flatten-into-array":52,"./_to-length":132,"./_to-object":133}],285:[function(require,module,exports){
+},{"./_a-function":20,"./_add-to-unscopables":22,"./_array-species-create":33,"./_export":51,"./_flatten-into-array":56,"./_to-length":136,"./_to-object":137}],289:[function(require,module,exports){
 'use strict'; // https://tc39.github.io/proposal-flatMap/#sec-Array.prototype.flatten
 
 var $export = require('./_export');
@@ -27871,7 +42791,7 @@ $export($export.P, 'Array', {
 
 require('./_add-to-unscopables')('flatten');
 
-},{"./_add-to-unscopables":18,"./_array-species-create":29,"./_export":47,"./_flatten-into-array":52,"./_to-integer":130,"./_to-length":132,"./_to-object":133}],286:[function(require,module,exports){
+},{"./_add-to-unscopables":22,"./_array-species-create":33,"./_export":51,"./_flatten-into-array":56,"./_to-integer":134,"./_to-length":136,"./_to-object":137}],290:[function(require,module,exports){
 'use strict'; // https://github.com/tc39/Array.prototype.includes
 
 var $export = require('./_export');
@@ -27888,7 +42808,7 @@ $export($export.P, 'Array', {
 
 require('./_add-to-unscopables')('includes');
 
-},{"./_add-to-unscopables":18,"./_array-includes":25,"./_export":47}],287:[function(require,module,exports){
+},{"./_add-to-unscopables":22,"./_array-includes":29,"./_export":51}],291:[function(require,module,exports){
 "use strict";
 
 // https://github.com/rwaldron/tc39-notes/blob/master/es6/2014-09/sept-25.md#510-globalasap-for-enqueuing-a-microtask
@@ -27906,7 +42826,7 @@ $export($export.G, {
   }
 });
 
-},{"./_cof":32,"./_export":47,"./_global":55,"./_microtask":82}],288:[function(require,module,exports){
+},{"./_cof":36,"./_export":51,"./_global":59,"./_microtask":86}],292:[function(require,module,exports){
 "use strict";
 
 // https://github.com/ljharb/proposal-is-error
@@ -27920,7 +42840,7 @@ $export($export.S, 'Error', {
   }
 });
 
-},{"./_cof":32,"./_export":47}],289:[function(require,module,exports){
+},{"./_cof":36,"./_export":51}],293:[function(require,module,exports){
 "use strict";
 
 // https://github.com/tc39/proposal-global
@@ -27930,15 +42850,15 @@ $export($export.G, {
   global: require('./_global')
 });
 
-},{"./_export":47,"./_global":55}],290:[function(require,module,exports){
+},{"./_export":51,"./_global":59}],294:[function(require,module,exports){
 // https://tc39.github.io/proposal-setmap-offrom/#sec-map.from
 require('./_set-collection-from')('Map');
 
-},{"./_set-collection-from":111}],291:[function(require,module,exports){
+},{"./_set-collection-from":115}],295:[function(require,module,exports){
 // https://tc39.github.io/proposal-setmap-offrom/#sec-map.of
 require('./_set-collection-of')('Map');
 
-},{"./_set-collection-of":112}],292:[function(require,module,exports){
+},{"./_set-collection-of":116}],296:[function(require,module,exports){
 "use strict";
 
 // https://github.com/DavidBruant/Map-Set.prototype.toJSON
@@ -27948,7 +42868,7 @@ $export($export.P + $export.R, 'Map', {
   toJSON: require('./_collection-to-json')('Map')
 });
 
-},{"./_collection-to-json":34,"./_export":47}],293:[function(require,module,exports){
+},{"./_collection-to-json":38,"./_export":51}],297:[function(require,module,exports){
 "use strict";
 
 // https://rwaldron.github.io/proposal-math-extensions/
@@ -27960,7 +42880,7 @@ $export($export.S, 'Math', {
   }
 });
 
-},{"./_export":47}],294:[function(require,module,exports){
+},{"./_export":51}],298:[function(require,module,exports){
 "use strict";
 
 // https://rwaldron.github.io/proposal-math-extensions/
@@ -27970,7 +42890,7 @@ $export($export.S, 'Math', {
   DEG_PER_RAD: Math.PI / 180
 });
 
-},{"./_export":47}],295:[function(require,module,exports){
+},{"./_export":51}],299:[function(require,module,exports){
 "use strict";
 
 // https://rwaldron.github.io/proposal-math-extensions/
@@ -27983,7 +42903,7 @@ $export($export.S, 'Math', {
   }
 });
 
-},{"./_export":47}],296:[function(require,module,exports){
+},{"./_export":51}],300:[function(require,module,exports){
 "use strict";
 
 // https://rwaldron.github.io/proposal-math-extensions/
@@ -27999,7 +42919,7 @@ $export($export.S, 'Math', {
   }
 });
 
-},{"./_export":47,"./_math-fround":76,"./_math-scale":78}],297:[function(require,module,exports){
+},{"./_export":51,"./_math-fround":80,"./_math-scale":82}],301:[function(require,module,exports){
 "use strict";
 
 // https://gist.github.com/BrendanEich/4294d5c212a6d2254703
@@ -28014,7 +42934,7 @@ $export($export.S, 'Math', {
   }
 });
 
-},{"./_export":47}],298:[function(require,module,exports){
+},{"./_export":51}],302:[function(require,module,exports){
 "use strict";
 
 // https://gist.github.com/BrendanEich/4294d5c212a6d2254703
@@ -28034,7 +42954,7 @@ $export($export.S, 'Math', {
   }
 });
 
-},{"./_export":47}],299:[function(require,module,exports){
+},{"./_export":51}],303:[function(require,module,exports){
 "use strict";
 
 // https://gist.github.com/BrendanEich/4294d5c212a6d2254703
@@ -28049,7 +42969,7 @@ $export($export.S, 'Math', {
   }
 });
 
-},{"./_export":47}],300:[function(require,module,exports){
+},{"./_export":51}],304:[function(require,module,exports){
 "use strict";
 
 // https://rwaldron.github.io/proposal-math-extensions/
@@ -28059,7 +42979,7 @@ $export($export.S, 'Math', {
   RAD_PER_DEG: 180 / Math.PI
 });
 
-},{"./_export":47}],301:[function(require,module,exports){
+},{"./_export":51}],305:[function(require,module,exports){
 "use strict";
 
 // https://rwaldron.github.io/proposal-math-extensions/
@@ -28072,7 +42992,7 @@ $export($export.S, 'Math', {
   }
 });
 
-},{"./_export":47}],302:[function(require,module,exports){
+},{"./_export":51}],306:[function(require,module,exports){
 "use strict";
 
 // https://rwaldron.github.io/proposal-math-extensions/
@@ -28082,7 +43002,7 @@ $export($export.S, 'Math', {
   scale: require('./_math-scale')
 });
 
-},{"./_export":47,"./_math-scale":78}],303:[function(require,module,exports){
+},{"./_export":51,"./_math-scale":82}],307:[function(require,module,exports){
 "use strict";
 
 // http://jfbastien.github.io/papers/Math.signbit.html
@@ -28095,7 +43015,7 @@ $export($export.S, 'Math', {
   }
 });
 
-},{"./_export":47}],304:[function(require,module,exports){
+},{"./_export":51}],308:[function(require,module,exports){
 "use strict";
 
 // https://gist.github.com/BrendanEich/4294d5c212a6d2254703
@@ -28115,7 +43035,7 @@ $export($export.S, 'Math', {
   }
 });
 
-},{"./_export":47}],305:[function(require,module,exports){
+},{"./_export":51}],309:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -28137,7 +43057,7 @@ require('./_descriptors') && $export($export.P + require('./_object-forced-pam')
   }
 });
 
-},{"./_a-function":16,"./_descriptors":43,"./_export":47,"./_object-dp":86,"./_object-forced-pam":88,"./_to-object":133}],306:[function(require,module,exports){
+},{"./_a-function":20,"./_descriptors":47,"./_export":51,"./_object-dp":90,"./_object-forced-pam":92,"./_to-object":137}],310:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -28159,7 +43079,7 @@ require('./_descriptors') && $export($export.P + require('./_object-forced-pam')
   }
 });
 
-},{"./_a-function":16,"./_descriptors":43,"./_export":47,"./_object-dp":86,"./_object-forced-pam":88,"./_to-object":133}],307:[function(require,module,exports){
+},{"./_a-function":20,"./_descriptors":47,"./_export":51,"./_object-dp":90,"./_object-forced-pam":92,"./_to-object":137}],311:[function(require,module,exports){
 "use strict";
 
 // https://github.com/tc39/proposal-object-values-entries
@@ -28173,7 +43093,7 @@ $export($export.S, 'Object', {
   }
 });
 
-},{"./_export":47,"./_object-to-array":98}],308:[function(require,module,exports){
+},{"./_export":51,"./_object-to-array":102}],312:[function(require,module,exports){
 "use strict";
 
 // https://github.com/tc39/proposal-object-getownpropertydescriptors
@@ -28205,7 +43125,7 @@ $export($export.S, 'Object', {
   }
 });
 
-},{"./_create-property":38,"./_export":47,"./_object-gopd":89,"./_own-keys":99,"./_to-iobject":131}],309:[function(require,module,exports){
+},{"./_create-property":42,"./_export":51,"./_object-gopd":93,"./_own-keys":103,"./_to-iobject":135}],313:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -28231,7 +43151,7 @@ require('./_descriptors') && $export($export.P + require('./_object-forced-pam')
   }
 });
 
-},{"./_descriptors":43,"./_export":47,"./_object-forced-pam":88,"./_object-gopd":89,"./_object-gpo":93,"./_to-object":133,"./_to-primitive":134}],310:[function(require,module,exports){
+},{"./_descriptors":47,"./_export":51,"./_object-forced-pam":92,"./_object-gopd":93,"./_object-gpo":97,"./_to-object":137,"./_to-primitive":138}],314:[function(require,module,exports){
 'use strict';
 
 var $export = require('./_export');
@@ -28257,7 +43177,7 @@ require('./_descriptors') && $export($export.P + require('./_object-forced-pam')
   }
 });
 
-},{"./_descriptors":43,"./_export":47,"./_object-forced-pam":88,"./_object-gopd":89,"./_object-gpo":93,"./_to-object":133,"./_to-primitive":134}],311:[function(require,module,exports){
+},{"./_descriptors":47,"./_export":51,"./_object-forced-pam":92,"./_object-gopd":93,"./_object-gpo":97,"./_to-object":137,"./_to-primitive":138}],315:[function(require,module,exports){
 "use strict";
 
 // https://github.com/tc39/proposal-object-values-entries
@@ -28271,7 +43191,7 @@ $export($export.S, 'Object', {
   }
 });
 
-},{"./_export":47,"./_object-to-array":98}],312:[function(require,module,exports){
+},{"./_export":51,"./_object-to-array":102}],316:[function(require,module,exports){
 'use strict'; // https://github.com/zenparsing/es-observable
 
 var $export = require('./_export');
@@ -28512,7 +43432,7 @@ $export($export.G, {
 
 require('./_set-species')('Observable');
 
-},{"./_a-function":16,"./_an-instance":20,"./_an-object":21,"./_core":37,"./_export":47,"./_for-of":53,"./_global":55,"./_hide":57,"./_microtask":82,"./_redefine-all":105,"./_set-species":114,"./_wks":143}],313:[function(require,module,exports){
+},{"./_a-function":20,"./_an-instance":24,"./_an-object":25,"./_core":41,"./_export":51,"./_for-of":57,"./_global":59,"./_hide":61,"./_microtask":86,"./_redefine-all":109,"./_set-species":118,"./_wks":147}],317:[function(require,module,exports){
 // https://github.com/tc39/proposal-promise-finally
 'use strict';
 
@@ -28542,7 +43462,7 @@ $export($export.P + $export.R, 'Promise', {
   }
 });
 
-},{"./_core":37,"./_export":47,"./_global":55,"./_promise-resolve":103,"./_species-constructor":118}],314:[function(require,module,exports){
+},{"./_core":41,"./_export":51,"./_global":59,"./_promise-resolve":107,"./_species-constructor":122}],318:[function(require,module,exports){
 'use strict'; // https://github.com/tc39/proposal-promise-try
 
 var $export = require('./_export');
@@ -28560,7 +43480,7 @@ $export($export.S, 'Promise', {
   }
 });
 
-},{"./_export":47,"./_new-promise-capability":83,"./_perform":102}],315:[function(require,module,exports){
+},{"./_export":51,"./_new-promise-capability":87,"./_perform":106}],319:[function(require,module,exports){
 var metadata = require('./_metadata');
 var anObject = require('./_an-object');
 var toMetaKey = metadata.key;
@@ -28570,7 +43490,7 @@ metadata.exp({ defineMetadata: function defineMetadata(metadataKey, metadataValu
   ordinaryDefineOwnMetadata(metadataKey, metadataValue, anObject(target), toMetaKey(targetKey));
 } });
 
-},{"./_an-object":21,"./_metadata":81}],316:[function(require,module,exports){
+},{"./_an-object":25,"./_metadata":85}],320:[function(require,module,exports){
 var metadata = require('./_metadata');
 var anObject = require('./_an-object');
 var toMetaKey = metadata.key;
@@ -28587,7 +43507,7 @@ metadata.exp({ deleteMetadata: function deleteMetadata(metadataKey, target /* , 
   return !!targetMetadata.size || store['delete'](target);
 } });
 
-},{"./_an-object":21,"./_metadata":81}],317:[function(require,module,exports){
+},{"./_an-object":25,"./_metadata":85}],321:[function(require,module,exports){
 var Set = require('./es6.set');
 var from = require('./_array-from-iterable');
 var metadata = require('./_metadata');
@@ -28608,7 +43528,7 @@ metadata.exp({ getMetadataKeys: function getMetadataKeys(target /* , targetKey *
   return ordinaryMetadataKeys(anObject(target), arguments.length < 2 ? undefined : toMetaKey(arguments[1]));
 } });
 
-},{"./_an-object":21,"./_array-from-iterable":24,"./_metadata":81,"./_object-gpo":93,"./es6.set":247}],318:[function(require,module,exports){
+},{"./_an-object":25,"./_array-from-iterable":28,"./_metadata":85,"./_object-gpo":97,"./es6.set":251}],322:[function(require,module,exports){
 var metadata = require('./_metadata');
 var anObject = require('./_an-object');
 var getPrototypeOf = require('./_object-gpo');
@@ -28627,7 +43547,7 @@ metadata.exp({ getMetadata: function getMetadata(metadataKey, target /* , target
   return ordinaryGetMetadata(metadataKey, anObject(target), arguments.length < 3 ? undefined : toMetaKey(arguments[2]));
 } });
 
-},{"./_an-object":21,"./_metadata":81,"./_object-gpo":93}],319:[function(require,module,exports){
+},{"./_an-object":25,"./_metadata":85,"./_object-gpo":97}],323:[function(require,module,exports){
 var metadata = require('./_metadata');
 var anObject = require('./_an-object');
 var ordinaryOwnMetadataKeys = metadata.keys;
@@ -28637,7 +43557,7 @@ metadata.exp({ getOwnMetadataKeys: function getOwnMetadataKeys(target /* , targe
   return ordinaryOwnMetadataKeys(anObject(target), arguments.length < 2 ? undefined : toMetaKey(arguments[1]));
 } });
 
-},{"./_an-object":21,"./_metadata":81}],320:[function(require,module,exports){
+},{"./_an-object":25,"./_metadata":85}],324:[function(require,module,exports){
 var metadata = require('./_metadata');
 var anObject = require('./_an-object');
 var ordinaryGetOwnMetadata = metadata.get;
@@ -28648,7 +43568,7 @@ metadata.exp({ getOwnMetadata: function getOwnMetadata(metadataKey, target /* , 
     , arguments.length < 3 ? undefined : toMetaKey(arguments[2]));
 } });
 
-},{"./_an-object":21,"./_metadata":81}],321:[function(require,module,exports){
+},{"./_an-object":25,"./_metadata":85}],325:[function(require,module,exports){
 var metadata = require('./_metadata');
 var anObject = require('./_an-object');
 var getPrototypeOf = require('./_object-gpo');
@@ -28666,7 +43586,7 @@ metadata.exp({ hasMetadata: function hasMetadata(metadataKey, target /* , target
   return ordinaryHasMetadata(metadataKey, anObject(target), arguments.length < 3 ? undefined : toMetaKey(arguments[2]));
 } });
 
-},{"./_an-object":21,"./_metadata":81,"./_object-gpo":93}],322:[function(require,module,exports){
+},{"./_an-object":25,"./_metadata":85,"./_object-gpo":97}],326:[function(require,module,exports){
 var metadata = require('./_metadata');
 var anObject = require('./_an-object');
 var ordinaryHasOwnMetadata = metadata.has;
@@ -28677,7 +43597,7 @@ metadata.exp({ hasOwnMetadata: function hasOwnMetadata(metadataKey, target /* , 
     , arguments.length < 3 ? undefined : toMetaKey(arguments[2]));
 } });
 
-},{"./_an-object":21,"./_metadata":81}],323:[function(require,module,exports){
+},{"./_an-object":25,"./_metadata":85}],327:[function(require,module,exports){
 var $metadata = require('./_metadata');
 var anObject = require('./_an-object');
 var aFunction = require('./_a-function');
@@ -28694,15 +43614,15 @@ $metadata.exp({ metadata: function metadata(metadataKey, metadataValue) {
   };
 } });
 
-},{"./_a-function":16,"./_an-object":21,"./_metadata":81}],324:[function(require,module,exports){
+},{"./_a-function":20,"./_an-object":25,"./_metadata":85}],328:[function(require,module,exports){
 // https://tc39.github.io/proposal-setmap-offrom/#sec-set.from
 require('./_set-collection-from')('Set');
 
-},{"./_set-collection-from":111}],325:[function(require,module,exports){
+},{"./_set-collection-from":115}],329:[function(require,module,exports){
 // https://tc39.github.io/proposal-setmap-offrom/#sec-set.of
 require('./_set-collection-of')('Set');
 
-},{"./_set-collection-of":112}],326:[function(require,module,exports){
+},{"./_set-collection-of":116}],330:[function(require,module,exports){
 "use strict";
 
 // https://github.com/DavidBruant/Map-Set.prototype.toJSON
@@ -28712,7 +43632,7 @@ $export($export.P + $export.R, 'Set', {
   toJSON: require('./_collection-to-json')('Set')
 });
 
-},{"./_collection-to-json":34,"./_export":47}],327:[function(require,module,exports){
+},{"./_collection-to-json":38,"./_export":51}],331:[function(require,module,exports){
 'use strict'; // https://github.com/mathiasbynens/String.prototype.at
 
 var $export = require('./_export');
@@ -28730,7 +43650,7 @@ $export($export.P + $export.F * FORCED, 'String', {
   }
 });
 
-},{"./_export":47,"./_fails":49,"./_string-at":120}],328:[function(require,module,exports){
+},{"./_export":51,"./_fails":53,"./_string-at":124}],332:[function(require,module,exports){
 'use strict'; // https://tc39.github.io/String.prototype.matchAll/
 
 var $export = require('./_export');
@@ -28771,7 +43691,7 @@ $export($export.P, 'String', {
   }
 });
 
-},{"./_defined":42,"./_export":47,"./_flags":51,"./_is-regexp":67,"./_iter-create":69,"./_to-length":132}],329:[function(require,module,exports){
+},{"./_defined":46,"./_export":51,"./_flags":55,"./_is-regexp":71,"./_iter-create":73,"./_to-length":136}],333:[function(require,module,exports){
 'use strict'; // https://github.com/tc39/proposal-string-pad-start-end
 
 var $export = require('./_export');
@@ -28790,7 +43710,7 @@ $export($export.P + $export.F * WEBKIT_BUG, 'String', {
   }
 });
 
-},{"./_export":47,"./_string-pad":123,"./_user-agent":139}],330:[function(require,module,exports){
+},{"./_export":51,"./_string-pad":127,"./_user-agent":143}],334:[function(require,module,exports){
 'use strict'; // https://github.com/tc39/proposal-string-pad-start-end
 
 var $export = require('./_export');
@@ -28809,7 +43729,7 @@ $export($export.P + $export.F * WEBKIT_BUG, 'String', {
   }
 });
 
-},{"./_export":47,"./_string-pad":123,"./_user-agent":139}],331:[function(require,module,exports){
+},{"./_export":51,"./_string-pad":127,"./_user-agent":143}],335:[function(require,module,exports){
 'use strict';
 // https://github.com/sebmarkbage/ecmascript-string-left-right-trim
 require('./_string-trim')('trimLeft', function ($trim) {
@@ -28818,7 +43738,7 @@ require('./_string-trim')('trimLeft', function ($trim) {
   };
 }, 'trimStart');
 
-},{"./_string-trim":125}],332:[function(require,module,exports){
+},{"./_string-trim":129}],336:[function(require,module,exports){
 'use strict';
 // https://github.com/sebmarkbage/ecmascript-string-left-right-trim
 require('./_string-trim')('trimRight', function ($trim) {
@@ -28827,13 +43747,13 @@ require('./_string-trim')('trimRight', function ($trim) {
   };
 }, 'trimEnd');
 
-},{"./_string-trim":125}],333:[function(require,module,exports){
+},{"./_string-trim":129}],337:[function(require,module,exports){
 require('./_wks-define')('asyncIterator');
 
-},{"./_wks-define":141}],334:[function(require,module,exports){
+},{"./_wks-define":145}],338:[function(require,module,exports){
 require('./_wks-define')('observable');
 
-},{"./_wks-define":141}],335:[function(require,module,exports){
+},{"./_wks-define":145}],339:[function(require,module,exports){
 "use strict";
 
 // https://github.com/tc39/proposal-global
@@ -28843,23 +43763,23 @@ $export($export.S, 'System', {
   global: require('./_global')
 });
 
-},{"./_export":47,"./_global":55}],336:[function(require,module,exports){
+},{"./_export":51,"./_global":59}],340:[function(require,module,exports){
 // https://tc39.github.io/proposal-setmap-offrom/#sec-weakmap.from
 require('./_set-collection-from')('WeakMap');
 
-},{"./_set-collection-from":111}],337:[function(require,module,exports){
+},{"./_set-collection-from":115}],341:[function(require,module,exports){
 // https://tc39.github.io/proposal-setmap-offrom/#sec-weakmap.of
 require('./_set-collection-of')('WeakMap');
 
-},{"./_set-collection-of":112}],338:[function(require,module,exports){
+},{"./_set-collection-of":116}],342:[function(require,module,exports){
 // https://tc39.github.io/proposal-setmap-offrom/#sec-weakset.from
 require('./_set-collection-from')('WeakSet');
 
-},{"./_set-collection-from":111}],339:[function(require,module,exports){
+},{"./_set-collection-from":115}],343:[function(require,module,exports){
 // https://tc39.github.io/proposal-setmap-offrom/#sec-weakset.of
 require('./_set-collection-of')('WeakSet');
 
-},{"./_set-collection-of":112}],340:[function(require,module,exports){
+},{"./_set-collection-of":116}],344:[function(require,module,exports){
 var $iterators = require('./es6.array.iterator');
 var getKeys = require('./_object-keys');
 var redefine = require('./_redefine');
@@ -28919,7 +43839,7 @@ for (var collections = getKeys(DOMIterables), i = 0; i < collections.length; i++
   }
 }
 
-},{"./_global":55,"./_hide":57,"./_iterators":73,"./_object-keys":95,"./_redefine":106,"./_wks":143,"./es6.array.iterator":156}],341:[function(require,module,exports){
+},{"./_global":59,"./_hide":61,"./_iterators":77,"./_object-keys":99,"./_redefine":110,"./_wks":147,"./es6.array.iterator":160}],345:[function(require,module,exports){
 "use strict";
 
 var $export = require('./_export');
@@ -28931,7 +43851,7 @@ $export($export.G + $export.B, {
   clearImmediate: $task.clear
 });
 
-},{"./_export":47,"./_task":127}],342:[function(require,module,exports){
+},{"./_export":51,"./_task":131}],346:[function(require,module,exports){
 "use strict";
 
 // ie9- setTimeout & setInterval additional parameters fix
@@ -28962,7 +43882,7 @@ $export($export.G + $export.B + $export.F * MSIE, {
   setInterval: wrap(global.setInterval)
 });
 
-},{"./_export":47,"./_global":55,"./_user-agent":139}],343:[function(require,module,exports){
+},{"./_export":51,"./_global":59,"./_user-agent":143}],347:[function(require,module,exports){
 require('./modules/es6.symbol');
 require('./modules/es6.object.create');
 require('./modules/es6.object.define-property');
@@ -29162,7 +44082,7 @@ require('./modules/web.immediate');
 require('./modules/web.dom.iterable');
 module.exports = require('./modules/_core');
 
-},{"./modules/_core":37,"./modules/es6.array.copy-within":146,"./modules/es6.array.every":147,"./modules/es6.array.fill":148,"./modules/es6.array.filter":149,"./modules/es6.array.find":151,"./modules/es6.array.find-index":150,"./modules/es6.array.for-each":152,"./modules/es6.array.from":153,"./modules/es6.array.index-of":154,"./modules/es6.array.is-array":155,"./modules/es6.array.iterator":156,"./modules/es6.array.join":157,"./modules/es6.array.last-index-of":158,"./modules/es6.array.map":159,"./modules/es6.array.of":160,"./modules/es6.array.reduce":162,"./modules/es6.array.reduce-right":161,"./modules/es6.array.slice":163,"./modules/es6.array.some":164,"./modules/es6.array.sort":165,"./modules/es6.array.species":166,"./modules/es6.date.now":167,"./modules/es6.date.to-iso-string":168,"./modules/es6.date.to-json":169,"./modules/es6.date.to-primitive":170,"./modules/es6.date.to-string":171,"./modules/es6.function.bind":172,"./modules/es6.function.has-instance":173,"./modules/es6.function.name":174,"./modules/es6.map":175,"./modules/es6.math.acosh":176,"./modules/es6.math.asinh":177,"./modules/es6.math.atanh":178,"./modules/es6.math.cbrt":179,"./modules/es6.math.clz32":180,"./modules/es6.math.cosh":181,"./modules/es6.math.expm1":182,"./modules/es6.math.fround":183,"./modules/es6.math.hypot":184,"./modules/es6.math.imul":185,"./modules/es6.math.log10":186,"./modules/es6.math.log1p":187,"./modules/es6.math.log2":188,"./modules/es6.math.sign":189,"./modules/es6.math.sinh":190,"./modules/es6.math.tanh":191,"./modules/es6.math.trunc":192,"./modules/es6.number.constructor":193,"./modules/es6.number.epsilon":194,"./modules/es6.number.is-finite":195,"./modules/es6.number.is-integer":196,"./modules/es6.number.is-nan":197,"./modules/es6.number.is-safe-integer":198,"./modules/es6.number.max-safe-integer":199,"./modules/es6.number.min-safe-integer":200,"./modules/es6.number.parse-float":201,"./modules/es6.number.parse-int":202,"./modules/es6.number.to-fixed":203,"./modules/es6.number.to-precision":204,"./modules/es6.object.assign":205,"./modules/es6.object.create":206,"./modules/es6.object.define-properties":207,"./modules/es6.object.define-property":208,"./modules/es6.object.freeze":209,"./modules/es6.object.get-own-property-descriptor":210,"./modules/es6.object.get-own-property-names":211,"./modules/es6.object.get-prototype-of":212,"./modules/es6.object.is":216,"./modules/es6.object.is-extensible":213,"./modules/es6.object.is-frozen":214,"./modules/es6.object.is-sealed":215,"./modules/es6.object.keys":217,"./modules/es6.object.prevent-extensions":218,"./modules/es6.object.seal":219,"./modules/es6.object.set-prototype-of":220,"./modules/es6.object.to-string":221,"./modules/es6.parse-float":222,"./modules/es6.parse-int":223,"./modules/es6.promise":224,"./modules/es6.reflect.apply":225,"./modules/es6.reflect.construct":226,"./modules/es6.reflect.define-property":227,"./modules/es6.reflect.delete-property":228,"./modules/es6.reflect.enumerate":229,"./modules/es6.reflect.get":232,"./modules/es6.reflect.get-own-property-descriptor":230,"./modules/es6.reflect.get-prototype-of":231,"./modules/es6.reflect.has":233,"./modules/es6.reflect.is-extensible":234,"./modules/es6.reflect.own-keys":235,"./modules/es6.reflect.prevent-extensions":236,"./modules/es6.reflect.set":238,"./modules/es6.reflect.set-prototype-of":237,"./modules/es6.regexp.constructor":239,"./modules/es6.regexp.exec":240,"./modules/es6.regexp.flags":241,"./modules/es6.regexp.match":242,"./modules/es6.regexp.replace":243,"./modules/es6.regexp.search":244,"./modules/es6.regexp.split":245,"./modules/es6.regexp.to-string":246,"./modules/es6.set":247,"./modules/es6.string.anchor":248,"./modules/es6.string.big":249,"./modules/es6.string.blink":250,"./modules/es6.string.bold":251,"./modules/es6.string.code-point-at":252,"./modules/es6.string.ends-with":253,"./modules/es6.string.fixed":254,"./modules/es6.string.fontcolor":255,"./modules/es6.string.fontsize":256,"./modules/es6.string.from-code-point":257,"./modules/es6.string.includes":258,"./modules/es6.string.italics":259,"./modules/es6.string.iterator":260,"./modules/es6.string.link":261,"./modules/es6.string.raw":262,"./modules/es6.string.repeat":263,"./modules/es6.string.small":264,"./modules/es6.string.starts-with":265,"./modules/es6.string.strike":266,"./modules/es6.string.sub":267,"./modules/es6.string.sup":268,"./modules/es6.string.trim":269,"./modules/es6.symbol":270,"./modules/es6.typed.array-buffer":271,"./modules/es6.typed.data-view":272,"./modules/es6.typed.float32-array":273,"./modules/es6.typed.float64-array":274,"./modules/es6.typed.int16-array":275,"./modules/es6.typed.int32-array":276,"./modules/es6.typed.int8-array":277,"./modules/es6.typed.uint16-array":278,"./modules/es6.typed.uint32-array":279,"./modules/es6.typed.uint8-array":280,"./modules/es6.typed.uint8-clamped-array":281,"./modules/es6.weak-map":282,"./modules/es6.weak-set":283,"./modules/es7.array.flat-map":284,"./modules/es7.array.flatten":285,"./modules/es7.array.includes":286,"./modules/es7.asap":287,"./modules/es7.error.is-error":288,"./modules/es7.global":289,"./modules/es7.map.from":290,"./modules/es7.map.of":291,"./modules/es7.map.to-json":292,"./modules/es7.math.clamp":293,"./modules/es7.math.deg-per-rad":294,"./modules/es7.math.degrees":295,"./modules/es7.math.fscale":296,"./modules/es7.math.iaddh":297,"./modules/es7.math.imulh":298,"./modules/es7.math.isubh":299,"./modules/es7.math.rad-per-deg":300,"./modules/es7.math.radians":301,"./modules/es7.math.scale":302,"./modules/es7.math.signbit":303,"./modules/es7.math.umulh":304,"./modules/es7.object.define-getter":305,"./modules/es7.object.define-setter":306,"./modules/es7.object.entries":307,"./modules/es7.object.get-own-property-descriptors":308,"./modules/es7.object.lookup-getter":309,"./modules/es7.object.lookup-setter":310,"./modules/es7.object.values":311,"./modules/es7.observable":312,"./modules/es7.promise.finally":313,"./modules/es7.promise.try":314,"./modules/es7.reflect.define-metadata":315,"./modules/es7.reflect.delete-metadata":316,"./modules/es7.reflect.get-metadata":318,"./modules/es7.reflect.get-metadata-keys":317,"./modules/es7.reflect.get-own-metadata":320,"./modules/es7.reflect.get-own-metadata-keys":319,"./modules/es7.reflect.has-metadata":321,"./modules/es7.reflect.has-own-metadata":322,"./modules/es7.reflect.metadata":323,"./modules/es7.set.from":324,"./modules/es7.set.of":325,"./modules/es7.set.to-json":326,"./modules/es7.string.at":327,"./modules/es7.string.match-all":328,"./modules/es7.string.pad-end":329,"./modules/es7.string.pad-start":330,"./modules/es7.string.trim-left":331,"./modules/es7.string.trim-right":332,"./modules/es7.symbol.async-iterator":333,"./modules/es7.symbol.observable":334,"./modules/es7.system.global":335,"./modules/es7.weak-map.from":336,"./modules/es7.weak-map.of":337,"./modules/es7.weak-set.from":338,"./modules/es7.weak-set.of":339,"./modules/web.dom.iterable":340,"./modules/web.immediate":341,"./modules/web.timers":342}],344:[function(require,module,exports){
+},{"./modules/_core":41,"./modules/es6.array.copy-within":150,"./modules/es6.array.every":151,"./modules/es6.array.fill":152,"./modules/es6.array.filter":153,"./modules/es6.array.find":155,"./modules/es6.array.find-index":154,"./modules/es6.array.for-each":156,"./modules/es6.array.from":157,"./modules/es6.array.index-of":158,"./modules/es6.array.is-array":159,"./modules/es6.array.iterator":160,"./modules/es6.array.join":161,"./modules/es6.array.last-index-of":162,"./modules/es6.array.map":163,"./modules/es6.array.of":164,"./modules/es6.array.reduce":166,"./modules/es6.array.reduce-right":165,"./modules/es6.array.slice":167,"./modules/es6.array.some":168,"./modules/es6.array.sort":169,"./modules/es6.array.species":170,"./modules/es6.date.now":171,"./modules/es6.date.to-iso-string":172,"./modules/es6.date.to-json":173,"./modules/es6.date.to-primitive":174,"./modules/es6.date.to-string":175,"./modules/es6.function.bind":176,"./modules/es6.function.has-instance":177,"./modules/es6.function.name":178,"./modules/es6.map":179,"./modules/es6.math.acosh":180,"./modules/es6.math.asinh":181,"./modules/es6.math.atanh":182,"./modules/es6.math.cbrt":183,"./modules/es6.math.clz32":184,"./modules/es6.math.cosh":185,"./modules/es6.math.expm1":186,"./modules/es6.math.fround":187,"./modules/es6.math.hypot":188,"./modules/es6.math.imul":189,"./modules/es6.math.log10":190,"./modules/es6.math.log1p":191,"./modules/es6.math.log2":192,"./modules/es6.math.sign":193,"./modules/es6.math.sinh":194,"./modules/es6.math.tanh":195,"./modules/es6.math.trunc":196,"./modules/es6.number.constructor":197,"./modules/es6.number.epsilon":198,"./modules/es6.number.is-finite":199,"./modules/es6.number.is-integer":200,"./modules/es6.number.is-nan":201,"./modules/es6.number.is-safe-integer":202,"./modules/es6.number.max-safe-integer":203,"./modules/es6.number.min-safe-integer":204,"./modules/es6.number.parse-float":205,"./modules/es6.number.parse-int":206,"./modules/es6.number.to-fixed":207,"./modules/es6.number.to-precision":208,"./modules/es6.object.assign":209,"./modules/es6.object.create":210,"./modules/es6.object.define-properties":211,"./modules/es6.object.define-property":212,"./modules/es6.object.freeze":213,"./modules/es6.object.get-own-property-descriptor":214,"./modules/es6.object.get-own-property-names":215,"./modules/es6.object.get-prototype-of":216,"./modules/es6.object.is":220,"./modules/es6.object.is-extensible":217,"./modules/es6.object.is-frozen":218,"./modules/es6.object.is-sealed":219,"./modules/es6.object.keys":221,"./modules/es6.object.prevent-extensions":222,"./modules/es6.object.seal":223,"./modules/es6.object.set-prototype-of":224,"./modules/es6.object.to-string":225,"./modules/es6.parse-float":226,"./modules/es6.parse-int":227,"./modules/es6.promise":228,"./modules/es6.reflect.apply":229,"./modules/es6.reflect.construct":230,"./modules/es6.reflect.define-property":231,"./modules/es6.reflect.delete-property":232,"./modules/es6.reflect.enumerate":233,"./modules/es6.reflect.get":236,"./modules/es6.reflect.get-own-property-descriptor":234,"./modules/es6.reflect.get-prototype-of":235,"./modules/es6.reflect.has":237,"./modules/es6.reflect.is-extensible":238,"./modules/es6.reflect.own-keys":239,"./modules/es6.reflect.prevent-extensions":240,"./modules/es6.reflect.set":242,"./modules/es6.reflect.set-prototype-of":241,"./modules/es6.regexp.constructor":243,"./modules/es6.regexp.exec":244,"./modules/es6.regexp.flags":245,"./modules/es6.regexp.match":246,"./modules/es6.regexp.replace":247,"./modules/es6.regexp.search":248,"./modules/es6.regexp.split":249,"./modules/es6.regexp.to-string":250,"./modules/es6.set":251,"./modules/es6.string.anchor":252,"./modules/es6.string.big":253,"./modules/es6.string.blink":254,"./modules/es6.string.bold":255,"./modules/es6.string.code-point-at":256,"./modules/es6.string.ends-with":257,"./modules/es6.string.fixed":258,"./modules/es6.string.fontcolor":259,"./modules/es6.string.fontsize":260,"./modules/es6.string.from-code-point":261,"./modules/es6.string.includes":262,"./modules/es6.string.italics":263,"./modules/es6.string.iterator":264,"./modules/es6.string.link":265,"./modules/es6.string.raw":266,"./modules/es6.string.repeat":267,"./modules/es6.string.small":268,"./modules/es6.string.starts-with":269,"./modules/es6.string.strike":270,"./modules/es6.string.sub":271,"./modules/es6.string.sup":272,"./modules/es6.string.trim":273,"./modules/es6.symbol":274,"./modules/es6.typed.array-buffer":275,"./modules/es6.typed.data-view":276,"./modules/es6.typed.float32-array":277,"./modules/es6.typed.float64-array":278,"./modules/es6.typed.int16-array":279,"./modules/es6.typed.int32-array":280,"./modules/es6.typed.int8-array":281,"./modules/es6.typed.uint16-array":282,"./modules/es6.typed.uint32-array":283,"./modules/es6.typed.uint8-array":284,"./modules/es6.typed.uint8-clamped-array":285,"./modules/es6.weak-map":286,"./modules/es6.weak-set":287,"./modules/es7.array.flat-map":288,"./modules/es7.array.flatten":289,"./modules/es7.array.includes":290,"./modules/es7.asap":291,"./modules/es7.error.is-error":292,"./modules/es7.global":293,"./modules/es7.map.from":294,"./modules/es7.map.of":295,"./modules/es7.map.to-json":296,"./modules/es7.math.clamp":297,"./modules/es7.math.deg-per-rad":298,"./modules/es7.math.degrees":299,"./modules/es7.math.fscale":300,"./modules/es7.math.iaddh":301,"./modules/es7.math.imulh":302,"./modules/es7.math.isubh":303,"./modules/es7.math.rad-per-deg":304,"./modules/es7.math.radians":305,"./modules/es7.math.scale":306,"./modules/es7.math.signbit":307,"./modules/es7.math.umulh":308,"./modules/es7.object.define-getter":309,"./modules/es7.object.define-setter":310,"./modules/es7.object.entries":311,"./modules/es7.object.get-own-property-descriptors":312,"./modules/es7.object.lookup-getter":313,"./modules/es7.object.lookup-setter":314,"./modules/es7.object.values":315,"./modules/es7.observable":316,"./modules/es7.promise.finally":317,"./modules/es7.promise.try":318,"./modules/es7.reflect.define-metadata":319,"./modules/es7.reflect.delete-metadata":320,"./modules/es7.reflect.get-metadata":322,"./modules/es7.reflect.get-metadata-keys":321,"./modules/es7.reflect.get-own-metadata":324,"./modules/es7.reflect.get-own-metadata-keys":323,"./modules/es7.reflect.has-metadata":325,"./modules/es7.reflect.has-own-metadata":326,"./modules/es7.reflect.metadata":327,"./modules/es7.set.from":328,"./modules/es7.set.of":329,"./modules/es7.set.to-json":330,"./modules/es7.string.at":331,"./modules/es7.string.match-all":332,"./modules/es7.string.pad-end":333,"./modules/es7.string.pad-start":334,"./modules/es7.string.trim-left":335,"./modules/es7.string.trim-right":336,"./modules/es7.symbol.async-iterator":337,"./modules/es7.symbol.observable":338,"./modules/es7.system.global":339,"./modules/es7.weak-map.from":340,"./modules/es7.weak-map.of":341,"./modules/es7.weak-set.from":342,"./modules/es7.weak-set.of":343,"./modules/web.dom.iterable":344,"./modules/web.immediate":345,"./modules/web.timers":346}],348:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -29200,17 +44120,22 @@ var version = "9.0.2";
 
 _appCompat.default.registerVersion(name, version, 'app-compat');
 
-},{"@firebase/app-compat":3}],345:[function(require,module,exports){
+},{"@firebase/app-compat":4}],349:[function(require,module,exports){
+"use strict";
+
+require("@firebase/auth-compat");
+
+},{"@firebase/auth-compat":6}],350:[function(require,module,exports){
 "use strict";
 
 require("@firebase/firestore-compat");
 
-},{"@firebase/firestore-compat":6}],346:[function(require,module,exports){
+},{"@firebase/firestore-compat":10}],351:[function(require,module,exports){
 "use strict";
 
 require("@firebase/storage-compat");
 
-},{"@firebase/storage-compat":9}],347:[function(require,module,exports){
+},{"@firebase/storage-compat":13}],352:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -29396,7 +44321,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],348:[function(require,module,exports){
+},{}],353:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -29882,7 +44807,7 @@ function __classPrivateFieldSet(receiver, state, value, kind, f) {
   return kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value), value;
 }
 
-},{}],349:[function(require,module,exports){
+},{}],354:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -29962,7 +44887,7 @@ var _stringify = _interopRequireDefault(require("./stringify.js"));
 var _parse = _interopRequireDefault(require("./parse.js"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-},{"./nil.js":351,"./parse.js":352,"./stringify.js":356,"./v1.js":357,"./v3.js":358,"./v4.js":360,"./v5.js":361,"./validate.js":362,"./version.js":363}],350:[function(require,module,exports){
+},{"./nil.js":356,"./parse.js":357,"./stringify.js":361,"./v1.js":362,"./v3.js":363,"./v4.js":365,"./v5.js":366,"./validate.js":367,"./version.js":368}],355:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -30186,7 +45111,7 @@ function md5ii(a, b, c, d, x, s, t) {
 
 var _default = md5;
 exports.default = _default;
-},{}],351:[function(require,module,exports){
+},{}],356:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -30195,7 +45120,7 @@ Object.defineProperty(exports, "__esModule", {
 exports.default = void 0;
 var _default = '00000000-0000-0000-0000-000000000000';
 exports.default = _default;
-},{}],352:[function(require,module,exports){
+},{}],357:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -30241,7 +45166,7 @@ function parse(uuid) {
 
 var _default = parse;
 exports.default = _default;
-},{"./validate.js":362}],353:[function(require,module,exports){
+},{"./validate.js":367}],358:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -30250,7 +45175,7 @@ Object.defineProperty(exports, "__esModule", {
 exports.default = void 0;
 var _default = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000)$/i;
 exports.default = _default;
-},{}],354:[function(require,module,exports){
+},{}],359:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -30277,7 +45202,7 @@ function rng() {
 
   return getRandomValues(rnds8);
 }
-},{}],355:[function(require,module,exports){
+},{}],360:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -30382,7 +45307,7 @@ function sha1(bytes) {
 
 var _default = sha1;
 exports.default = _default;
-},{}],356:[function(require,module,exports){
+},{}],361:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -30422,7 +45347,7 @@ function stringify(arr, offset = 0) {
 
 var _default = stringify;
 exports.default = _default;
-},{"./validate.js":362}],357:[function(require,module,exports){
+},{"./validate.js":367}],362:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -30530,7 +45455,7 @@ function v1(options, buf, offset) {
 
 var _default = v1;
 exports.default = _default;
-},{"./rng.js":354,"./stringify.js":356}],358:[function(require,module,exports){
+},{"./rng.js":359,"./stringify.js":361}],363:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -30547,7 +45472,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 const v3 = (0, _v.default)('v3', 0x30, _md.default);
 var _default = v3;
 exports.default = _default;
-},{"./md5.js":350,"./v35.js":359}],359:[function(require,module,exports){
+},{"./md5.js":355,"./v35.js":364}],364:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -30631,7 +45556,7 @@ function _default(name, version, hashfunc) {
   return generateUUID;
 }
 
-},{"./parse.js":352,"./stringify.js":356}],360:[function(require,module,exports){
+},{"./parse.js":357,"./stringify.js":361}],365:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -30669,7 +45594,7 @@ function v4(options, buf, offset) {
 
 var _default = v4;
 exports.default = _default;
-},{"./rng.js":354,"./stringify.js":356}],361:[function(require,module,exports){
+},{"./rng.js":359,"./stringify.js":361}],366:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -30686,7 +45611,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 const v5 = (0, _v.default)('v5', 0x50, _sha.default);
 var _default = v5;
 exports.default = _default;
-},{"./sha1.js":355,"./v35.js":359}],362:[function(require,module,exports){
+},{"./sha1.js":360,"./v35.js":364}],367:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -30704,7 +45629,7 @@ function validate(uuid) {
 
 var _default = validate;
 exports.default = _default;
-},{"./regex.js":353}],363:[function(require,module,exports){
+},{"./regex.js":358}],368:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -30726,4 +45651,4 @@ function version(uuid) {
 
 var _default = version;
 exports.default = _default;
-},{"./validate.js":362}]},{},[1]);
+},{"./validate.js":367}]},{},[1,3]);

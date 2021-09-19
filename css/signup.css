@@ -1,5 +1,6 @@
 #auth-hero {
-    background-color: rgb(113, 43, 204);
+    /* background-color: rgb(113, 43, 204); */
+    background-color: #3587A4;
     height: 100vh;
     display: flex;
     flex-direction: column;
@@ -8,9 +9,11 @@
 }
 
 .auth-box {
-    height: 400px;
+    height: 500px;
     width: 400px;
-    background-color: rgb(236, 229, 241); 
+    /* background-color: rgb(236, 229, 241);  */
+
+    background-color: rgb(210, 216, 223); 
     padding: 20px; 
     border-radius: 10px;
 } 
@@ -21,40 +24,51 @@
   font-size: 15px;
   font-weight: bold;
   border-radius: 10px;
-  margin: 10px 0px;
+  margin: 5px 0px;
   width:350px;
+  filter: drop-shadow(1px 1px 2px rgb(37, 35, 35));
 }
 
 .title{
-  margin:5px 0px 40px 0px;
+  margin:5px 0px 20px 0px;
   font-size: 30px;
   font-weight: bold;
 }
 
 .log-btn{
-  background-color: rgb(151, 68, 230);
+  /* background-color: rgb(151, 68, 230); */
+  background-color: #3587A4;
   width: 90%;
+  margin: 5px 0px 0px 0px;
   border-radius: 13px;
   font-size: 16px;
   font-family: "lato";
   padding: 20px 0px;
   color: white;
+  filter: drop-shadow(1px 1px 2px rgb(37, 35, 35));
 }
 
-.login-form{
+.log-btn{
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+.signup-form{
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
+
 .signup{
   margin: 50px 0px 0px 0px;
-  color: rgb(151, 68, 230);
+  color: #3587A4;
   text-decoration: none;
 }
 
 .signup:hover{
-  color: rgb(93, 31, 151);
+  color: #276175;
+  cursor: pointer;
 }
 
 .input-box{
@@ -62,6 +76,6 @@
   border: none;
   border-radius: 13px;
   width: 90%;
-  padding: 20px 5px;
+  padding: 20px 20px 20px 10px;
 
 }

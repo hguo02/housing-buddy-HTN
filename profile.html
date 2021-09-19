@@ -9,23 +9,47 @@
 
     <link rel="stylesheet" href="css/common.css">
     <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/profile.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Lato:wght@100;300;400;700&family=Roboto:wght@100;300;400;500;700&display=swap"
+        rel="stylesheet">
+
 </head>
 
 <body>
     <nav class="navbar">
-        <div class="app-logo">
-            <img src="" alt="Housing Buddy Logo">
-        </div>
+        <a class="app-logo" href="/">
+            <img src="https://firebasestorage.googleapis.com/v0/b/housing-buddy.appspot.com/o/logoCropped.png?alt=media&token=e594a726-ae55-4005-b45c-0a0bc999c48b"
+                alt="log" href="/">
+        </a>
         <div class="links">
             <a class="nav-link" href="/">Home</a>
-            <a class="nav-link" href="rewards.html">Rewards</a>
-            <a class="nav-link" href="profile.html">Profile</a>
+            <a class="private nav-link" href="rewards.html">Rewards</a>
+            <a class="private nav-link" href="profile.html">Profile</a>
             <a class="nav-link" href="splash.html">About</a>
             <a class="auth-btn" href="auth.html">Sign In</a>
         </div>
     </nav>
-    <h1>big peen profile</h1>
+    <div class="bg"></div>
+    <div class="bg bg2"></div>
+    <div class="bg bg3"></div>
 
+    <div class="content">
+        <div class="card">
+            <img src="https://preview.redd.it/gzy8zh4ihjq61.jpg?width=960&crop=smart&auto=webp&s=3e06ff406b3a6122c5039d03ffde1fb1e4dd6162"
+                alt="John" style="width:100%">
+            <h1 class="profile-name"></h1>
+            <p class="profile-email title"></p>
+            <p class="profile-points title">Current Points <i class="fa fa-certificate" aria-hidden="true"> </i></p>
+            <div style="margin: 24px 0;">
+            </div>
+            <p><button>Check Comments <i class="fa fa-comments" aria-hidden="true"></i></button></p>
+        </div>
+    </div>
+
+    <script src="./bundles/profileBundle.js"></script>
 </body>
 
 </html>

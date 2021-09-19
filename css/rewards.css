@@ -1,0 +1,75 @@
+.main-display{
+  font-family: 'Lato';
+  display:flex;
+  flex-direction: column;
+  align-items: center;
+  height: 92vh;
+  width: 100%;
+  background-image: linear-gradient(to bottom right, rgb(74, 72, 189), rgb(25, 38, 116));
+}
+
+.points-display{
+  border:none;
+  font-family: 'Lato';
+  filter: drop-shadow(5px 3px 5px rgb(37, 35, 35));
+  margin: 4vh 0px 0px 0px;
+  background-color: rgb(142, 121, 190);
+  width: 250px;
+  height: 220px;
+  text-align: center;
+  border-radius: 50%;
+  padding: 30px 0px 0px 0px;
+  font-size: 20px;
+  font-weight: bold;
+  color: white;
+}
+
+.points{
+  color: lightblue;
+  font-size: 40px;
+  font-weight: bold;
+}
+
+.banner{
+  font-size: 35px;
+  font-weight: bold;
+  background-color: rgb(224, 195, 66);
+}
+
+.giveaway{
+  font-size: 50px;
+  color: red;
+}
+
+.num{
+  color: rgb(104, 21, 21);
+}
+
+.rate{
+  filter: drop-shadow(5px 3px 5px rgb(37, 35, 35));
+  font-family: 'Lato';
+  background-color: rgb(148, 53, 177);
+  padding: 20px;
+  font-size: 30px;
+  border-radius: 20px;
+  text-align: center;
+}
+
+.enter{
+  background-color: rgb(118, 44, 187);
+  border:none;
+  padding: 20px 40px;
+  border-radius: 5%;
+  color: white;
+  font-size: 14px;
+  margin: 10px;
+  filter: drop-shadow(5px 3px 5px rgb(37, 35, 35));
+  transition: .2s ease-in;
+}
+
+.enter:hover{
+  background-color: rgb(89, 33, 141);
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}

@@ -23,13 +23,14 @@
                 <h1 class="title">Log In</h1>
                 <form action="" class="login-form">
                     <div class="emailcss">
-                        <input class="input-box" type="email" name="email" id="email" placeholder="E-mail" required>
-                    </div>
-                    <div class="emailcss">
-                        <input class="input-box" type="password" name="password" placeholder="Password" id="password"
+                        <input class="input-box" type="email" name="email" id="email-sign-in" placeholder="E-mail"
                             required>
                     </div>
-                    <button class="log-btn">Login</button>
+                    <div class="emailcss">
+                        <input class="input-box" type="password" name="password" placeholder="Password"
+                            id="password-sign-in" required>
+                    </div>
+                    <button type="button" onclick="signIn()" id="sign-in-btn" class="log-btn">Sign In</button>
 
                     <a href="signup.html" class="signup">Don't have an account? Sign up</a>
                 </form>
@@ -39,6 +40,9 @@
 
 
     </section>
+
+    <!-- <script src="newBundle.js"></script> -->
+    <script src="./bundles/authBundle.js"></script>
 </body>
 
 </html>

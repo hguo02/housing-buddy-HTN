@@ -34,14 +34,12 @@ const storage = app.storage();
 const auth = app.auth();
 
 
-
 // ******************************************************************
 // Auth
 
 async function signInWithEmailAndPassword(email, password) {
     try {
         await auth.signInWithEmailAndPassword(email, password);
-        window.location.replace('index.html');
     } catch (e) {
         console.log(e);
     }
@@ -49,30 +47,8 @@ async function signInWithEmailAndPassword(email, password) {
 
 async function signUpWithEmailAndPassword(email, password) {
     try {
-        let userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        const firebaseUser = userCredential.user;
-        const userID = firebaseUser.uid;
-        const email = firebaseUser.email;
-        const displayName = firebaseUser.displayName;
-        const result = displayName.split(' ');
-
-        let firstName;
-        let lastName;
-
-        if (result.length > 1) {
-            firstName = result[0];
-            lastName = result[result.length - 1];
-        }
-
-        const user = {
-            userID: userID,
-            email: email,
-            firstName: firstName,
-            lastName: lastName,
-            giveawayPoints: 0,
-        };
-
-        await updateUser(user);
+        const credential = await auth.createUserWithEmailAndPassword(email, password);
+        return credential;
     } catch (e) {
         console.log(e);
     }
@@ -86,14 +62,41 @@ async function signOut() {
     }
 }
 
-async function updateUser(user) {
+async function updateUser(user, userID) {
     try {
-        await firestore.collection(USERS).doc(user.id).set(user).then((_) => {
-            return user;
-        });
+        await firestore.collection(USERS).doc(user.userID).set(user);
+        // await firestore.collection(USERS).doc(user.id).set(user).then((_) => {
+        //     return user;
+        // });
     } catch (e) {
         console.log(e);
     }
+}
+
+async function getUserByID(id) {
+    return (await firestore.collection(USERS).doc(id).get()).data();
+}
+async function getLocationByID(id) {
+    return (await firestore.collection(LOCATIONS).doc(id).get()).data();
+}
+async function updateLocationRating(id, newRating, newRecommend) {
+    try {
+        await firestore.collection(LOCATIONS).doc(id).update({
+            rating: newRating,
+            recommendedCount: newRecommend,
+        });
+        return true;
+    } catch (e) {
+        console.log(e);
+        return false;
+    }
+}
+function getCurrentUser() {
+    return auth.currentUser;
+}
+
+function getServerTimestamp() {
+    return firebase.firestore.FieldValue.serverTimestamp();
 }
 
 // ******************************************************************
@@ -107,6 +110,12 @@ async function uploadImageToFirebaseStorage(image) {
     await storageRef.put(image);
 
     return (await storageRef.getDownloadURL());
+}
+
+/// Returns an array of all the JSON location objects found in the registry.
+async function getAllLocations() {
+    const documentSnapshot = await firestore.collection(LOCATIONS).get();
+    return documentSnapshot.docs.map((element) => element.data());
 }
 
 /// Returns a JSON location object for [locationID]. √
@@ -152,15 +161,19 @@ async function createReview(locationID, review) {
     }
 }
 
+async function enterGiveaway(giveawayID) {
+
+}
+
 
 // ******************************************************************
 // Testing (ONLY FOR US DO NOT PUSH)
-async function callAsync() {
-    const result = await getLocationReviews('7TahmGCGceaQYEAx1Mgm');
-    console.log(result);
-}
+// async function callAsync() {
+//     const result = await getLocationReviews('7TahmGCGceaQYEAx1Mgm');
+//     console.log(result);
+// }
 
-callAsync();
+// callAsync();
 
 
 async function createLocation() {
@@ -169,4 +182,19 @@ async function createLocation() {
 
 
 
-export { createReview };
+export {
+    getAllLocations,
+    getLocationData,
+    getLocationReviews,
+    createReview,
+    updateUser,
+    getUserByID,
+    getLocationByID,
+    getCurrentUser,
+    getServerTimestamp,
+    signInWithEmailAndPassword,
+    signUpWithEmailAndPassword,
+    updateLocationRating,
+    auth,
+    signOut,
+};

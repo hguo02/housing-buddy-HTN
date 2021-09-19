@@ -6,9 +6,11 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "browserify index.js -p esmify > bundle.js",
-    "buildMain": "browserify ./js/main.js -p esmify > mainbundle.js",
-    "createBundle": "browserify index.js ./js/main.js -p esmify > newBundle.js",
+    "createBundle": "browserify index.js ./js/main.js -p esmify > ./bundles/newBundle.js",
+    "createAuthBundle": "browserify index.js ./js/auth.js -p esmify > ./bundles/authBundle.js",
+    "createSplashBundle": "browserify index.js ./js/splash.js -p esmify > ./bundles/splashBundle.js",
+    "createProfileBundle": "browserify index.js ./js/profile.js -p esmify > ./bundles/profileBundle.js",
+    "createRewardsBundle": "browserify index.js ./js/rewards.js -p esmify > ./bundles/rewardsBundle.js",
     "watch": "watchify index.js -o dist/bundle.js -v"
   },
   "browserify": {

@@ -1,5 +1,6 @@
 #auth-hero {
-    background-color: rgb(113, 43, 204);
+    /* background-color: rgb(113, 43, 204); */
+    background-color: #3587A4;
     height: 100vh;
     display: flex;
     flex-direction: column;
@@ -10,35 +11,46 @@
 .auth-box {
     height: 400px;
     width: 400px;
-    background-color: rgb(236, 229, 241); 
+    /* background-color: rgb(236, 229, 241);  */
+    background-color: rgb(210, 216, 223); 
+
     padding: 20px; 
     border-radius: 10px;
 } 
 
 .emailcss { 
+  font-family: 'Lato';
   padding: 0px;
   line-height: 20px;
   font-size: 15px;
   font-weight: bold;
   border-radius: 10px;
   width: 100%;
-  margin: 0px 0px 15px 30px;
+  margin: 0px 0px 15px 10px;
+  filter: drop-shadow(1px 1px 2px rgb(37, 35, 35));
 }
 
 .title{
+  font-family: 'Lato';
   margin:5px 0px 40px 0px;
   font-size: 30px;
   font-weight: bold;
 }
 
 .log-btn{
-  background-color: rgb(151, 68, 230);
+  /* background-color: rgb(151, 68, 230); */
+  background-color: #3587A4;
   width: 90%;
   border-radius: 13px;
   font-size: 16px;
   font-family: "lato";
   padding: 20px 0px;
   color: white;
+  filter: drop-shadow(1px 1px 2px rgb(179, 170, 170));
+}
+
+.log-btn:hover{
+  cursor: pointer;
 }
 
 .login-form{
@@ -49,12 +61,12 @@
 
 .signup{
   margin: 50px 0px 0px 0px;
-  color: rgb(151, 68, 230);
+  color: #3587A4;
   text-decoration: none;
 }
 
 .signup:hover{
-  color: rgb(93, 31, 151);
+  color: #276175;
 }
 
 .input-box{
@@ -62,6 +74,6 @@
   border: none;
   border-radius: 13px;
   width: 90%;
-  padding: 20px 5px;
+  padding: 20px 15px;
 
 }
